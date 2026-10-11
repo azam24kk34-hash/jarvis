@@ -143,7 +143,7 @@ def test_layout_save_and_apply(toolbox, notepad):
     time.sleep(0.5)
     r = toolbox.run("save_layout", {"name": "тест"})
     print(r)
-    assert "Notepad" in r or "notepad" in r.lower()
+    assert "Блокнот" in r or "notepad" in r.lower()
     toolbox.run("place_window", {"app": "notepad", "monitor": 1, "position": "left", "launch": False})
     r = toolbox.run("apply_layout", {"name": "тест"})
     print(r)
