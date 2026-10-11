@@ -57,7 +57,6 @@ class Jarvis:
         self.usage = Usage(on_budget=self._budget_alert)
         self.usage.set_budget_getter(lambda: self.config.get("daily_budget"))
         self.toolbox.on_quit = self._quit_for_update
-        self.voice.music_playing = lambda: self.browser.music_playing
         self.quick = QuickCommands(self.config, self.toolbox, self.protocols)
         self._ducked = False
         self._pending_restore = 0.0
@@ -66,6 +65,7 @@ class Jarvis:
                            play_audio=self._play_audio, on_heard=lambda t: self.js("HUD.heard", t),
                            on_stop=lambda: self.js("HUD.stopAudio"),
                            on_notice=lambda t: self._alert(t, "info"))
+        self.voice.music_playing = lambda: self.browser.music_playing
         self.monitor = Monitor(self.config, on_alert=self._alert, on_welcome=self._welcome)
         self._started = False
         threading.Thread(target=self._worker, daemon=True, name="brain").start()
@@ -611,6 +611,17 @@ def selftest():
         except Exception as e:
             ok = False
             lines.append(f"FAIL {name}: {e!r}")
+    try:  # головне: чи взагалі створюється Джарвіс (ловить помилки на кшталт «немає атрибута»)
+        os.environ.setdefault("APPDATA", tempfile.mkdtemp())
+        j = Jarvis()
+        api = Api(j)
+        api.stats()
+        api.get_settings()
+        lines.append("OK   Jarvis() + Api")
+    except Exception as e:
+        import traceback
+        ok = False
+        lines.append(f"FAIL Jarvis(): {e!r}\n{traceback.format_exc()}")
     out = os.path.join(tempfile.gettempdir(), "jarvis_selftest.txt")
     with open(out, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + f"\nRESULT: {'PASS' if ok else 'FAIL'}\n")
