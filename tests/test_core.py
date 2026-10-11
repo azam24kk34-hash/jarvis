@@ -223,3 +223,15 @@ def test_obs_actions_with_fake_websocket(config, toolbox, monkeypatch):
     assert toolbox.run("obs", {"action": "scene", "name": "гру"}) == "Сцена: Гра"
     assert "Mic/Aux" in toolbox.run("obs", {"action": "mute", "name": "мікрофон"})
     assert log == ["stream", ("scene", "Гра"), ("mute", "Mic/Aux", True)]
+
+
+def test_custom_phrases(config, toolbox):
+    from core.protocols import Protocols
+    from core.quick import QuickCommands
+    q = QuickCommands(config, toolbox, Protocols())
+    r = q.handle("Джарвіс, запам'ятай фразу: коли я кажу «хто у нас дракон», відповідай «Звісно ж ви, сер»")
+    assert r and "Запам'ятав" in r[0]
+    assert q.handle("Джарвіс, скажи, хто у нас дракон?")[0] == "Звісно ж ви, сер"
+    assert q.handle("хто у нас кіт") is None
+    assert "Забув" in q.handle("забудь фразу хто у нас дракон")[0]
+    assert q.handle("хто у нас дракон") is None

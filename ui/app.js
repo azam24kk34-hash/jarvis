@@ -593,6 +593,7 @@ async function openSettings() {
   $("#s-ics").value = "";
   $("#s-ics").placeholder = s.calendar_ics ? "Підключено ✓ (введіть нову адресу, щоб замінити)" : "https://calendar.google.com/calendar/ical/…/basic.ics";
   renderMemory(s.memory || []);
+  renderPhrases(await api("phrases_list") || []);
   $("#settings").classList.remove("hidden");
 }
 $("#btn-settings").onclick = openSettings;
@@ -619,7 +620,7 @@ $("#s-save").onclick = async () => {
 
 /* ---------- ЗАВАНТАЖЕННЯ ---------- */
 const BOOT = [
-  "STARK INDUSTRIES // MARK OS v7.5",
+  "STARK INDUSTRIES // MARK OS v7.6",
   "Ініціалізація нейроядра ............ <b>OK</b>",
   "Підключення до Claude AI ........... <b>OK</b>",
   "Калібрування аудіосенсорів ......... <b>OK</b>",
@@ -763,6 +764,22 @@ function renderProtocols(list) {
   box.innerHTML = list.map((p) => `<button title="${escapeHtml(p.description || "")}" data-name="${escapeHtml(p.name)}">${escapeHtml(p.name.toUpperCase())}</button>`).join("");
   box.querySelectorAll("button").forEach((b) => (b.onclick = () => { sfx("click"); api("run_protocol", b.dataset.name); }));
 }
+function renderPhrases(list) {
+  const box = $("#s-phrases");
+  box.innerHTML = list.length ? list.map((p) =>
+    `<div><span><b>«${escapeHtml(p.trigger)}»</b> → ${p.responses.map((r) => "«" + escapeHtml(r) + "»").join(" / ")}</span>` +
+    `<button data-t="${escapeHtml(p.trigger)}" title="Забути">✕</button></div>`).join("")
+    : '<div class="empty">Ще немає — додайте першу</div>';
+  box.querySelectorAll("button").forEach((b) => (b.onclick = async () => {
+    await api("phrase_delete", b.dataset.t); renderPhrases(await api("phrases_list") || []); }));
+}
+$("#s-ph-add").onclick = async () => {
+  const t = $("#s-ph-trigger").value.trim(), r = $("#s-ph-response").value.trim();
+  if (!t || !r) return;
+  await api("phrase_add", t, r);
+  $("#s-ph-trigger").value = ""; $("#s-ph-response").value = "";
+  renderPhrases(await api("phrases_list") || []);
+};
 function renderMemory(list) {
   const box = $("#s-memory");
   box.innerHTML = list.length ? list.slice().reverse().map((f) =>
@@ -805,7 +822,7 @@ const DEMO = {
       daily: [{ date: "2026-10-11", min: 7, max: 13, code: 2 }, { date: "2026-10-12", min: 6, max: 11, code: 61 }, { date: "2026-10-13", min: 5, max: 12, code: 3 },
               { date: "2026-10-14", min: 4, max: 14, code: 0 }, { date: "2026-10-15", min: 6, max: 13, code: 80 }] }); }, 700);
     setTimeout(() => { HUD.addMessage("jarvis", "Протокол «вечірка» активовано, сер. Сусіди, підозрюю, не в захваті."); HUD.setState("listening"); }, 1100);
-    }, 2600); return { version: "7.5.0-demo", settings: { sfx: false, voice_fx: true },
+    }, 2600); return { version: "7.6.0-demo", settings: { sfx: false, voice_fx: true },
       protocols: [{ name: "вечірка" }, { name: "тиша" }, { name: "робота" }, { name: "діагностика" }] }; },
   stats: () => ({ cpu: 20 + Math.random() * 25, cores: Array.from({ length: 16 }, () => Math.random() * 70), ram: 58, ram_used: 18.6, ram_total: 32,
     disk: 71, battery: null, down: Math.random() * 900, up: Math.random() * 200, procs: 287, uptime: 93210,
@@ -815,5 +832,7 @@ const DEMO = {
     morning_briefing: true, proactive_alerts: true, welcome_back: true, sfx: true, voice_fx: true, start_mini: true,
     calendar_ics: "x", memory: [{ text: "П'є каву без цукру" }, { text: "Тата звати Олег" }] }),
   toggle_mute: () => (muted = !muted),
+  phrases_list: () => [{ trigger: "хто у нас дракон", responses: ["Звісно ж ви, сер. Вогнедишний і непереможний."] }],
+  phrase_add: () => "ok", phrase_delete: () => "ok",
   set_mini: (on) => on,
 };

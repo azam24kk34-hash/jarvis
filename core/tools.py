@@ -137,6 +137,8 @@ class Toolbox:
         self.apps = apps
         from .winlayout import Layouts
         self.layouts = Layouts()
+        from .phrases import Phrases
+        self.phrases = Phrases()
         self.on_quit = None
         self.config = config
         self.reminders = reminders
@@ -226,6 +228,11 @@ class Toolbox:
              "input_schema": {"type": "object", "properties": {"app": {"type": "string"}, "button": {"type": "string"}}, "required": ["app", "button"]}},
             {"name": "app_buttons", "description": "Список кнопок і пунктів меню, які видно у вікні програми (щоб знати, що натиснути).",
              "input_schema": {"type": "object", "properties": {"app": {"type": "string"}}, "required": ["app"]}},
+            {"name": "teach_phrase", "description": "Навчитися власної фразочки користувача: коли він каже trigger — відповідати response (дослівно). Використовуй, коли просять «запам'ятай фразу/навчись відповідати…».",
+             "input_schema": {"type": "object", "properties": {"trigger": {"type": "string"}, "response": {"type": "string"}}, "required": ["trigger", "response"]}},
+            {"name": "forget_phrase", "description": "Забути фразочку за її тригером.",
+             "input_schema": {"type": "object", "properties": {"trigger": {"type": "string"}}, "required": ["trigger"]}},
+            {"name": "list_phrases", "description": "Список фразочок, яких навчив користувач.", "input_schema": {"type": "object", "properties": {}}},
             {"name": "restore_session", "description": "Відкрити програми, які були відкриті минулого разу (до вимкнення/перезапуску ПК чи Джарвіса). Можна вказати only — список назв, які відкрити.",
              "input_schema": {"type": "object", "properties": {"only": {"type": "array", "items": {"type": "string"}}}}},
             {"name": "recent_apps", "description": "Програми, якими користувач користувався останнім часом (і що було відкрито минулого разу).",
@@ -772,6 +779,19 @@ class Toolbox:
         if not w:
             return f"Не бачу відкритого вікна «{app}»"
         return f"{w[0][1][:50]}:\n" + "\n".join(uia.list_controls(w[0][0]))
+
+    # ---------- власні фразочки
+    def t_teach_phrase(self, trigger, response):
+        r = self.phrases.add(trigger, response)
+        self.card("memory", {"text": f"«{trigger}» → «{response}»"})
+        return r
+
+    def t_forget_phrase(self, trigger):
+        return self.phrases.delete(trigger)
+
+    def t_list_phrases(self):
+        items = self.phrases.listing()
+        return "\n".join(f"«{i['trigger']}» → " + " / ".join(f"«{r}»" for r in i["responses"]) for i in items) or "Фразочок ще немає"
 
     # ---------- програми з минулого разу
     def t_restore_session(self, only=None):

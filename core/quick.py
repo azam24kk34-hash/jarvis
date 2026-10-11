@@ -43,6 +43,20 @@ class QuickCommands:
 
     def handle(self, text):
         """Повертає (відповідь, tool) якщо команду виконано локально, інакше None."""
+        ph = getattr(self.tb, "phrases", None)
+        if ph is not None:
+            raw = text.strip()
+            # «запам'ятай фразу: коли я кажу «X», відповідай «Y»»
+            m = re.search(r"(?:запам['ʼ’]?ятай|навчись|вивчи)(?: нову)? фраз\w*\W+(?:коли|якщо) (?:я )?(?:кажу|скажу|питаю|спитаю|запитаю)\W+(.+?)\W*,?\s+"
+                          r"(?:то |ти )?(?:відповідай|відповідаєш|кажи|кажеш|скажи|відповісти)\W+(.+)", raw, re.I)
+            if m:
+                return ph.add(m.group(1), m.group(2).strip(" .»\"")), "teach_phrase"
+            m = re.search(r"(?:забудь|видали) фраз\w*\W+(.+)", raw, re.I)
+            if m:
+                return ph.delete(m.group(1).strip(" .«»\"")), "teach_phrase"
+            ans = ph.match(raw)
+            if ans:
+                return ans, None
         t = _norm(text)
         if not t or len(t) > 60:
             return None

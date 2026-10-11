@@ -521,6 +521,15 @@ class Api:
         except Exception as e:
             return str(e)
 
+    def phrases_list(self):
+        return self._j.toolbox.phrases.listing()
+
+    def phrase_add(self, trigger, response):
+        return self._j.toolbox.phrases.add(trigger, response)
+
+    def phrase_delete(self, trigger):
+        return self._j.toolbox.phrases.delete(trigger)
+
     def forget_fact(self, text):
         return self._j.memory.forget(text)
 
