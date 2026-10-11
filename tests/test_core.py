@@ -192,3 +192,34 @@ def test_web_search_parsing(toolbox, monkeypatch):
     monkeypatch.setattr(T.requests, "post", lambda *a, **k: type("R", (), {"text": html})())
     r = toolbox.run("web_search", {"query": "курс долара"})
     assert "Курс долара" in r and "https://example.com/a" in r and "41,2" in r
+
+
+def test_obs_actions_with_fake_websocket(config, toolbox, monkeypatch):
+    import sys
+    import types as T
+    log = []
+
+    class Fake:
+        def __init__(self, **kw):
+            assert kw["port"] == 4455
+            if kw.get("password") != "secret":
+                raise Exception("authentication failed")
+
+        def get_version(self): return T.SimpleNamespace(obs_version="31")
+        def get_stream_status(self): return T.SimpleNamespace(output_active=False, output_timecode="00:00:00.000")
+        def get_record_status(self): return T.SimpleNamespace(output_active=False, output_timecode="00:00:00.000")
+        def start_stream(self): log.append("stream")
+        def get_scene_list(self): return T.SimpleNamespace(scenes=[{"sceneName": "Гра"}, {"sceneName": "Чат"}])
+        def set_current_program_scene(self, n): log.append(("scene", n))
+        def get_input_list(self): return T.SimpleNamespace(inputs=[{"inputName": "Mic/Aux"}])
+        def set_input_mute(self, n, m): log.append(("mute", n, m))
+
+    monkeypatch.setitem(sys.modules, "obsws_python", T.SimpleNamespace(ReqClient=Fake))
+    config.data["obs_password"] = "wrong"
+    assert "пароль" in toolbox.run("obs", {"action": "start_stream"})
+    del toolbox._obs
+    config.data["obs_password"] = "secret"
+    assert toolbox.run("obs", {"action": "start_stream"}) == "Трансляцію запущено"
+    assert toolbox.run("obs", {"action": "scene", "name": "гру"}) == "Сцена: Гра"
+    assert "Mic/Aux" in toolbox.run("obs", {"action": "mute", "name": "мікрофон"})
+    assert log == ["stream", ("scene", "Гра"), ("mute", "Mic/Aux", True)]

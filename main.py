@@ -526,7 +526,7 @@ class Api:
 
     def save_settings(self, values):
         values = dict(values or {})
-        for k in ("api_key", "openai_key", "gemini_key", "groq_key"):
+        for k in ("api_key", "openai_key", "gemini_key", "groq_key", "obs_password"):
             if k in values and (not values[k] or "…" in values[k]):
                 values.pop(k)  # не перезаписуємо збережений ключ порожнім/прихованим
         old = (self._j.config.get("provider"), self._j.config.get("model"))
@@ -571,9 +571,10 @@ def selftest():
     import tempfile
     lines, ok = [], True
     mods = ["anthropic", "edge_tts", "speech_recognition", "pyaudio", "keyboard", "psutil", "PIL.ImageGrab", "requests",
-            "icalendar", "recurring_ical_events", "numpy", "onnxruntime", "webview", "playwright.sync_api"]
+            "icalendar", "recurring_ical_events", "numpy", "onnxruntime", "webview", "playwright.sync_api",
+            "obsws_python", "openai"]
     if sys.platform == "win32":
-        mods += ["clr", "webview.platforms.edgechromium", "winreg"]
+        mods += ["clr", "webview.platforms.edgechromium", "winreg", "uiautomation"]
     for m in mods:
         try:
             importlib.import_module(m)
@@ -588,6 +589,8 @@ def selftest():
         "flac converter": lambda: os.path.exists(__import__("speech_recognition").audio.get_flac_converter()),
         "tz Europe/Kyiv": lambda: bool(__import__("zoneinfo").ZoneInfo("Europe/Kyiv")),
         "pyaudio init": lambda: __import__("pyaudio").PyAudio().terminate() is None,
+        "ui automation": lambda: sys.platform != "win32" or __import__("uiautomation").GetRootControl() is not None,
+        "monitors": lambda: len(__import__("core.winlayout", fromlist=["x"]).monitors()) >= 1,
         "playwright driver": lambda: all(os.path.exists(p) for p in
                                          __import__("playwright._impl._driver", fromlist=["x"]).compute_driver_executable()),
     }
@@ -608,6 +611,8 @@ def selftest():
 def main():
     if "--selftest" in sys.argv:
         selftest()
+    from core.winlayout import enable_dpi_awareness
+    enable_dpi_awareness()  # точні координати вікон на моніторах з масштабом
     log.setup(VERSION)
     # дозволяємо WebView2 відтворювати голос без кліку користувача
     os.environ.setdefault("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--autoplay-policy=no-user-gesture-required")

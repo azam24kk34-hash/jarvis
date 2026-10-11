@@ -118,6 +118,12 @@ class AppTracker:
             if items:  # порожній знімок (наприклад, під час вимкнення) не затирає сесію
                 self.data["current_session"]["apps"] = [exe for exe, _ in items]
                 self.data["current_session"]["updated"] = now
+                if IS_WIN:  # де стояло вікно кожної програми — щоб відновити й розташування на моніторах
+                    try:
+                        from .winlayout import capture
+                        self.data["current_session"]["layout"] = capture()
+                    except Exception as e:
+                        print("Layout capture error:", repr(e))
             # не роздуваємо файл: лишаємо 150 останніх програм
             if len(apps) > 150:
                 for exe in sorted(apps, key=lambda e: apps[e].get("last", ""))[:len(apps) - 150]:
@@ -134,6 +140,9 @@ class AppTracker:
             time.sleep(self.interval)
 
     # ---------------------------------------------------------------- для інструментів
+    def last_layout(self):
+        return [e for e in (self.data.get("last_session") or {}).get("layout", []) if os.path.exists(e.get("exe", ""))]
+
     def last_session(self):
         s = self.data.get("last_session") or {}
         return [e for e in s.get("apps", []) if os.path.exists(e)], s.get("updated") or s.get("started")

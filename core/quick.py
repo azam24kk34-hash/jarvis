@@ -162,4 +162,46 @@ class QuickCommands:
             mins = n if m.group(2).startswith("хвилин") else n / 60
             self.tb.run("set_reminder", {"text": "таймер", "in_minutes": mins})
             return f"Таймер на {n} {m.group(2)}.", "set_reminder"
+        # ---------- OBS
+        if re.fullmatch(r"(?:почни|запусти|старт|розпочни|увімкни|включи)(?: в обс| obs)? (?:трансляцію|стрім|ефір)(?: в обс| в obs)?", t):
+            return self.tb.run("obs", {"action": "start_stream"}) + ".", "obs"
+        if re.fullmatch(r"(?:зупини|заверши|вимкни|стоп|закінчи)(?: в обс| obs)? (?:трансляцію|стрім|ефір)(?: в обс| в obs)?", t):
+            return self.tb.run("obs", {"action": "stop_stream"}) + ".", "obs"
+        if re.fullmatch(r"(?:почни|запусти|увімкни|включи|старт) запис(?: в обс| в obs)?", t):
+            return self.tb.run("obs", {"action": "start_record"}) + ".", "obs"
+        if re.fullmatch(r"(?:зупини|заверши|вимкни|стоп) запис(?: в обс| в obs)?", t):
+            return self.tb.run("obs", {"action": "stop_record"}) + ".", "obs"
+        m = re.fullmatch(r"(?:перемкни на |постав |увімкни )?сцен[ауі] (.{2,30})", t)
+        if m:
+            return self.tb.run("obs", {"action": "scene", "name": m.group(1)}) + ".", "obs"
+        # ---------- монітори й робочі місця
+        m = re.fullmatch(r"(?:запам'ятай|запамʼятай|збережи) (?:розташування|вікна|робоче місце)(?: вікон)?(?: як)? (.{2,30})", t)
+        if m:
+            return self.tb.run("save_layout", {"name": m.group(1)}), "save_layout"
+        m = re.fullmatch(r"(?:розстав|відкрий|віднови|увімкни)(?: вікна| мені)?(?: робоче місце| розташування) (.{2,30})|робоче місце (.{2,30})", t)
+        if m:
+            name = m.group(1) or m.group(2)
+            if not self.tb.layouts.find(name)[1]:
+                return None  # хай мозок пояснить, які робочі місця є
+            import threading
+            threading.Thread(target=self.tb.run, args=("apply_layout", {"name": name}), daemon=True).start()
+            return f"Розставляю робоче місце «{name}», {title}.", "apply_layout"
+        nums = {"перший": 1, "першому": 1, "головний": 1, "другий": 2, "другому": 2, "третій": 3, "третьому": 3, "1": 1, "2": 2, "3": 3}
+        m = re.fullmatch(r"(?:постав|перенеси|перекинь|відкрий|запусти|кинь) (.{2,30}?) на (перший|першому|головний|другий|другому|третій|третьому|1|2|3) "
+                         r"(?:екран|монітор)\w*(?: (ліворуч|праворуч|зліва|справа|вліво|вправо))?", t)
+        if m:
+            side = m.group(3) or ""
+            pos = "left" if side.startswith(("лів", "злі", "влі")) else "right" if side else "full"
+            r = self.tb.run("place_window", {"app": m.group(1), "monitor": nums[m.group(2)], "position": pos})
+            return (f"Готово, {m.group(1)} на екрані {nums[m.group(2)]}." if " — екран " in r else r), "place_window"
+        # ---------- натиснути кнопку в програмі
+        m = re.fullmatch(r"натисни (?:в|у) (\S+) (.{2,40})", t) or re.fullmatch(r"натисни (.{2,40}?) (?:в|у) (\S+)", t)
+        if m:
+            app, btn = (m.group(1), m.group(2)) if t.startswith(("натисни в ", "натисни у ")) else (m.group(2), m.group(1))
+            if app in ("обс", "obs") and re.search(r"трансляц|стрім", btn):
+                return self.tb.run("obs", {"action": "stop_stream" if re.search(r"зупин|стоп|заверш", btn) else "start_stream"}) + ".", "obs"
+            r = self.tb.run("click_in_app", {"app": app, "button": btn})
+            if not r.startswith("Натиснуто"):
+                return None  # хай мозок подивиться список кнопок і розбереться
+            return r + ".", "click_in_app"
         return None

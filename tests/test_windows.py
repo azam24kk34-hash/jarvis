@@ -113,3 +113,52 @@ def test_weather(toolbox):
     r = toolbox.run("get_weather", {"city": "Київ", "days": 2})
     print(r)
     assert "Київ" in r and "°C" in r
+
+
+# ---------------- монітори, розташування вікон, UI Automation (v7.5)
+def test_monitors_listed(toolbox):
+    from core.winlayout import monitors
+    ms = monitors()
+    print(ms)
+    assert ms and ms[0]["primary"] and ms[0]["i"] == 1
+    assert "Екрани" in toolbox.run("monitors", {})
+
+
+def test_place_window_left_half(toolbox, notepad):
+    from core import winlayout as wl
+    r = toolbox.run("place_window", {"app": "notepad", "monitor": 1, "position": "left", "launch": False})
+    print(r)
+    assert "екран 1" in r
+    h = wl.find_windows(query="notepad")[0][0]
+    p = wl.placement(h)
+    l, t, rr, b = wl.monitors()[0]["work"]
+    print(p, (l, t, rr, b))
+    assert abs(p["rect"][0] - l) < 30 and abs(p["rect"][2] - (l + (rr - l) // 2)) < 40
+
+
+def test_layout_save_and_apply(toolbox, notepad):
+    from core import winlayout as wl
+    toolbox.run("place_window", {"app": "notepad", "monitor": 1, "position": "right", "launch": False})
+    import time
+    time.sleep(0.5)
+    r = toolbox.run("save_layout", {"name": "тест"})
+    print(r)
+    assert "Notepad" in r or "notepad" in r.lower()
+    toolbox.run("place_window", {"app": "notepad", "monitor": 1, "position": "left", "launch": False})
+    r = toolbox.run("apply_layout", {"name": "тест"})
+    print(r)
+    h = wl.find_windows(query="notepad")[0][0]
+    l, t, rr, b = wl.monitors()[0]["work"]
+    assert wl.placement(h)["rect"][0] > l + (rr - l) // 3  # знову праворуч
+
+
+def test_ui_automation_lists_and_clicks_notepad(toolbox, notepad):
+    r = toolbox.run("app_buttons", {"app": "notepad"})
+    print(r)
+    assert "File" in r or "Файл" in r
+    r = toolbox.run("click_in_app", {"app": "notepad", "button": "File"})
+    print(r)
+    assert r.startswith("Натиснуто")
+    import time
+    time.sleep(0.5)
+    toolbox.run("press_keys", {"keys": "esc"})

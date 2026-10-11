@@ -89,6 +89,9 @@ jobs:
           --collect-all edge_tts
           --collect-binaries onnxruntime
           --collect-all playwright
+          --collect-all uiautomation
+          --collect-submodules comtypes
+          --hidden-import obsws_python
           --collect-data tzdata
           --hidden-import pyaudio
           --hidden-import clr

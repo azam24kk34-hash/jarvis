@@ -45,7 +45,8 @@ DEFAULT_PROTOCOLS = {
 # інструменти, які можна використовувати в протоколах (без небезпечних)
 ALLOWED = {"open_application", "close_application", "open_website", "play_music", "volume_control",
            "media_control", "system_status", "get_weather", "open_path", "set_reminder", "power_action",
-           "window_control", "press_keys", "get_calendar", "youtube_music", "browser_open", "restore_session"}
+           "window_control", "press_keys", "get_calendar", "youtube_music", "browser_open", "restore_session",
+           "place_window", "apply_layout", "obs", "click_in_app"}
 
 
 class Protocols:

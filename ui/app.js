@@ -11,6 +11,8 @@ const TOOL_NAMES = {
   browser_open: "BROWSER", browser_snapshot: "BROWSER", browser_click: "BROWSER", browser_type: "BROWSER",
   browser_press: "BROWSER", browser_scroll: "BROWSER", browser_read: "BROWSER", browser_back: "BROWSER",
   browser_look: "BROWSER", browser_window: "BROWSER", restore_session: "APPS", recent_apps: "APPS",
+  place_window: "SCREENS", monitors: "SCREENS", save_layout: "SCREENS", apply_layout: "SCREENS",
+  obs: "OBS", click_in_app: "CONTROL", app_buttons: "CONTROL",
 };
 let SETTINGS = { sfx: true, voice_fx: true };
 const STATES = {
@@ -581,6 +583,8 @@ async function openSettings() {
   $("#s-vfx").checked = !!s.voice_fx;
   $("#s-auto").checked = !!s.autostart;
   $("#s-upd").checked = s.auto_update !== false;
+  $("#s-obs").value = "";
+  $("#s-obs").placeholder = s.obs_password_set ? `Збережено: ${s.obs_password}` : "OBS → Інструменти → Налаштування WebSocket-сервера";
   $("#s-duck").checked = !!s.duck_music;
   $("#s-engine").value = s.wake_engine || "google";
   $("#s-music").value = s.music_service || "ytmusic";
@@ -603,7 +607,8 @@ $("#s-save").onclick = async () => {
     wake_word_enabled: $("#s-wake").checked, listen_mode: $("#s-always").checked ? "always" : "wake", speak_responses: $("#s-speak").checked, web_search: $("#s-web").checked,
     morning_briefing: $("#s-brief").checked, proactive_alerts: $("#s-alerts").checked, welcome_back: $("#s-welcome").checked,
     sfx: $("#s-sfx").checked, voice_fx: $("#s-vfx").checked,
-    autostart: $("#s-auto").checked, auto_update: $("#s-upd").checked, duck_music: $("#s-duck").checked, start_mini: $("#s-smini").checked, wake_engine: $("#s-engine").value, music_service: $("#s-music").value,
+    autostart: $("#s-auto").checked, auto_update: $("#s-upd").checked,
+    ...($("#s-obs").value.trim() ? { obs_password: $("#s-obs").value.trim() } : {}), duck_music: $("#s-duck").checked, start_mini: $("#s-smini").checked, wake_engine: $("#s-engine").value, music_service: $("#s-music").value,
     daily_budget: Math.max(0, parseFloat($("#s-budget").value) || 0),
     ...($("#s-ics").value.trim() ? { calendar_ics: $("#s-ics").value.trim() } : {}),
   });
@@ -614,7 +619,7 @@ $("#s-save").onclick = async () => {
 
 /* ---------- ЗАВАНТАЖЕННЯ ---------- */
 const BOOT = [
-  "STARK INDUSTRIES // MARK OS v7.4",
+  "STARK INDUSTRIES // MARK OS v7.5",
   "Ініціалізація нейроядра ............ <b>OK</b>",
   "Підключення до Claude AI ........... <b>OK</b>",
   "Калібрування аудіосенсорів ......... <b>OK</b>",
@@ -800,7 +805,7 @@ const DEMO = {
       daily: [{ date: "2026-10-11", min: 7, max: 13, code: 2 }, { date: "2026-10-12", min: 6, max: 11, code: 61 }, { date: "2026-10-13", min: 5, max: 12, code: 3 },
               { date: "2026-10-14", min: 4, max: 14, code: 0 }, { date: "2026-10-15", min: 6, max: 13, code: 80 }] }); }, 700);
     setTimeout(() => { HUD.addMessage("jarvis", "Протокол «вечірка» активовано, сер. Сусіди, підозрюю, не в захваті."); HUD.setState("listening"); }, 1100);
-    }, 2600); return { version: "7.4.0-demo", settings: { sfx: false, voice_fx: true },
+    }, 2600); return { version: "7.5.0-demo", settings: { sfx: false, voice_fx: true },
       protocols: [{ name: "вечірка" }, { name: "тиша" }, { name: "робота" }, { name: "діагностика" }] }; },
   stats: () => ({ cpu: 20 + Math.random() * 25, cores: Array.from({ length: 16 }, () => Math.random() * 70), ram: 58, ram_used: 18.6, ram_total: 32,
     disk: 71, battery: null, down: Math.random() * 900, up: Math.random() * 200, procs: 287, uptime: 93210,

@@ -50,6 +50,9 @@ DEFAULTS = {
     "browser_channel": "msedge",     # браузер для Джарвіса: "msedge" або "chrome"
     "browser_minimize_music": True,  # після запуску музики згортати вікно браузера
     "duck_music": True,              # приглушувати музику, поки Джарвіс слухає/говорить
+    "obs_host": "localhost",         # OBS WebSocket (Інструменти → Налаштування WebSocket-сервера)
+    "obs_port": 4455,
+    "obs_password": "",
     "auto_update": True,             # самі ставимо нові версії з GitHub, коли ПК вільний
     "daily_budget": 1.0,             # $ на день; попередження на 80% і 100% (0 = без ліміту)
 }
@@ -94,7 +97,7 @@ class Config:
 
     def public(self) -> dict:
         d = dict(self.data)
-        for k in ("api_key", "openai_key", "gemini_key", "groq_key"):
+        for k in ("api_key", "openai_key", "gemini_key", "groq_key", "obs_password"):
             key = d.get(k, "") or ""
             d[k + "_set"] = bool(key)
             d[k] = (key[:6] + "…" + key[-4:]) if len(key) > 12 else ""

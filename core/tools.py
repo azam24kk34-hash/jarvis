@@ -135,6 +135,8 @@ class Toolbox:
     def __init__(self, config, reminders, protocols=None, ui_notify=None, memory=None, browser=None, apps=None):
         self.browser = browser
         self.apps = apps
+        from .winlayout import Layouts
+        self.layouts = Layouts()
         self.on_quit = None
         self.config = config
         self.reminders = reminders
@@ -209,6 +211,21 @@ class Toolbox:
              "input_schema": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}},
             {"name": "update_self", "description": "Оновити Джарвіса до нової версії з GitHub (лише коли користувач прямо просить «онови себе»/«встанови оновлення»).",
              "input_schema": {"type": "object", "properties": {}}},
+            {"name": "place_window", "description": "Поставити вікно програми на потрібний монітор: monitor 1 = головний, 2 = другий…; position: full (на весь екран), left, right, top, bottom, center. Якщо програма не запущена — запустить її (launch=true).",
+             "input_schema": {"type": "object", "properties": {"app": {"type": "string", "description": "назва програми або частина заголовка вікна, напр. 'obs', 'chrome'"},
+                              "monitor": {"type": "integer"}, "position": {"type": "string", "enum": ["full", "left", "right", "top", "bottom", "center"]},
+                              "launch": {"type": "boolean"}}, "required": ["app"]}},
+            {"name": "monitors", "description": "Скільки моніторів і які в них розміри.", "input_schema": {"type": "object", "properties": {}}},
+            {"name": "save_layout", "description": "Запам'ятати поточне розташування всіх вікон на моніторах як «робоче місце» з назвою (напр. «стрім»).",
+             "input_schema": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}},
+            {"name": "apply_layout", "description": "Відновити збережене робоче місце: відкрити потрібні програми й розставити їх по моніторах.",
+             "input_schema": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}},
+            {"name": "obs", "description": "Керування OBS Studio: start_stream, stop_stream, start_record, stop_record, pause_record, scene (перемкнути сцену, name), scenes (список), mute/unmute/toggle_mute (джерело звуку name, напр. мікрофон), start_virtual_cam, stop_virtual_cam, replay (зберегти повтор), status. Якщо OBS не запущений — запустить.",
+             "input_schema": {"type": "object", "properties": {"action": {"type": "string"}, "name": {"type": "string"}}, "required": ["action"]}},
+            {"name": "click_in_app", "description": "Натиснути кнопку/пункт меню в будь-якій відкритій програмі Windows за підписом (UI Automation). Для OBS краще інструмент obs.",
+             "input_schema": {"type": "object", "properties": {"app": {"type": "string"}, "button": {"type": "string"}}, "required": ["app", "button"]}},
+            {"name": "app_buttons", "description": "Список кнопок і пунктів меню, які видно у вікні програми (щоб знати, що натиснути).",
+             "input_schema": {"type": "object", "properties": {"app": {"type": "string"}}, "required": ["app"]}},
             {"name": "restore_session", "description": "Відкрити програми, які були відкриті минулого разу (до вимкнення/перезапуску ПК чи Джарвіса). Можна вказати only — список назв, які відкрити.",
              "input_schema": {"type": "object", "properties": {"only": {"type": "array", "items": {"type": "string"}}}}},
             {"name": "recent_apps", "description": "Програми, якими користувач користувався останнім часом (і що було відкрито минулого разу).",
@@ -678,6 +695,84 @@ class Toolbox:
             threading.Thread(target=self.on_quit, daemon=True).start()
         return f"Завантажено версію {new}. Інсталятор зараз закриє мене й запустить оновленого. До зустрічі за хвилину."
 
+    # ---------- монітори й розташування вікон
+    def t_place_window(self, app, monitor=1, position="full", launch=True):
+        from . import winlayout as wl
+        w = wl.find_windows(query=app)
+        if not w and launch:
+            r = self.resolve_app(app)
+            if not r:
+                return f"Не знайшов програму «{app}»"
+            self.launch_resolved(r)
+            got = wl.wait_window(query=app, timeout=25)
+            w = [got] if got else []
+        if not w:
+            return f"Вікно «{app}» не з'явилося"
+        n = wl.place(w[0][0], monitor, position)
+        pos = {"full": "на весь екран", "left": "ліворуч", "right": "праворуч", "top": "вгорі",
+               "bottom": "внизу", "center": "по центру"}.get(position, position)
+        return f"{w[0][1][:50]} — екран {n}, {pos}"
+
+    def t_monitors(self):
+        from .winlayout import monitors
+        ms = monitors()
+        return "Екрани: " + "; ".join(
+            f"{m['i']}{' (головний)' if m['primary'] else ''}: {m['full'][2] - m['full'][0]}×{m['full'][3] - m['full'][1]}" for m in ms)
+
+    def t_save_layout(self, name):
+        from . import winlayout as wl
+        entries = wl.capture()
+        if not entries:
+            return "Не бачу відкритих вікон"
+        self.layouts.save(name, entries)
+        from .apps import pretty
+        return f"Запам'ятав робоче місце «{name}»: " + ", ".join(f"{pretty(e['exe'])} (екран {e['monitor']})" for e in entries)
+
+    def t_apply_layout(self, name):
+        from . import winlayout as wl
+        key, entries = self.layouts.find(name)
+        if not entries:
+            return f"Немає робочого місця «{name}». Є: {', '.join(self.layouts.items) or 'жодного'}"
+        steps = [os.path.splitext(os.path.basename(e["exe"]))[0].upper() for e in entries]
+        self.card("protocol", {"name": f"робоче місце {key}", "steps": steps, "done": 0})
+        done, failed = wl.apply(entries, on_progress=lambda d, f: self.card(
+            "protocol", {"name": f"робоче місце {key}", "steps": steps, "done": len(d) + len(f)}))
+        return f"Робоче місце «{key}»: розставлено {', '.join(done)}" + (f"; не відкрились: {', '.join(failed)}" if failed else "")
+
+    # ---------- OBS і кнопки в програмах
+    def t_obs(self, action, name=None):
+        from .obs import OBS, OBS_ERRORS
+        if not hasattr(self, "_obs"):
+            self._obs = OBS(self.config, self)
+        try:
+            r = self._obs.run(action, name)
+        except (PermissionError, ConnectionError) as e:
+            return OBS_ERRORS.get(str(e), str(e))
+        except ImportError:
+            return "Модуль OBS недоступний"
+        self.card("launch", {"title": "OBS STUDIO", "sub": r.upper()[:60]})
+        return r
+
+    def t_click_in_app(self, app, button):
+        from . import uia
+        from . import winlayout as wl
+        w = wl.find_windows(query=app)
+        if not w:
+            return f"Не бачу відкритого вікна «{app}»"
+        hit = uia.click(w[0][0], button)
+        if not hit:
+            names = uia.list_controls(w[0][0], limit=40)
+            return f"Не знайшов кнопку «{button}» у {w[0][1][:40]}. Є: " + "; ".join(names)
+        return f"Натиснуто «{hit}» у {w[0][1][:40]}"
+
+    def t_app_buttons(self, app):
+        from . import uia
+        from . import winlayout as wl
+        w = wl.find_windows(query=app)
+        if not w:
+            return f"Не бачу відкритого вікна «{app}»"
+        return f"{w[0][1][:50]}:\n" + "\n".join(uia.list_controls(w[0][0]))
+
     # ---------- програми з минулого разу
     def t_restore_session(self, only=None):
         from .apps import launch, pretty, running_exes
@@ -689,6 +784,24 @@ class Toolbox:
         if only:
             wanted = [o.lower() for o in only]
             exes = [e for e in exes if any(w in pretty(e).lower() or w in os.path.basename(e).lower() for w in wanted)]
+        layout = [e for e in self.apps.last_layout() if e["exe"] in exes] if IS_WIN else []
+        if layout:  # відновлюємо й розташування вікон на моніторах
+            from .winlayout import apply
+            running_before = running_exes()
+            done, failed = apply(layout)
+            rest = [e for e in exes if e not in {x["exe"] for x in layout} and e.lower() not in running_before]
+            for exe in rest[:8]:
+                try:
+                    launch(exe)
+                    done.append(pretty(exe))
+                except Exception:
+                    pass
+            self.card("protocol", {"name": "відновлення робочого місця", "steps": [n.upper() for n in done + failed],
+                                   "done": len(done)})
+            msg = f"Відкрито й розставлено по екранах: {', '.join(done)}." if done else "Нічого не вдалося відкрити."
+            if failed:
+                msg += f" Не дочекався вікна: {', '.join(failed)}."
+            return msg + (f" (сесія від {when[:16].replace('T', ' ')})" if when else "")
         running = running_exes()
         opened, already = [], []
         for exe in exes[:12]:
