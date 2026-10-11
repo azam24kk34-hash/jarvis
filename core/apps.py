@@ -68,7 +68,8 @@ def snapshot():
         except Exception:
             continue
         name = os.path.basename(exe).lower()
-        if not exe or name in SKIP or "\\windows\\system32\\" in exe.lower() or "\\windowsapps\\" in exe.lower():
+        # програми з WindowsApps (Магазин) напряму не запускаються — їх пропускаємо; system32 лишаємо (Блокнот, Paint)
+        if not exe or name in SKIP or "\\windowsapps\\" in exe.lower() or "\\systemapps\\" in exe.lower():
             continue
         out.setdefault(exe, title)
     return list(out.items())

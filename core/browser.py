@@ -63,8 +63,10 @@ YTM_NOW_JS = r"""
   const m = navigator.mediaSession && navigator.mediaSession.metadata;
   const v = document.querySelector('video');
   const bar = document.querySelector('ytmusic-player-bar');
-  const t = m ? m.title : (bar && bar.querySelector('.title') ? bar.querySelector('.title').innerText : '');
-  const a = m ? m.artist : (bar && bar.querySelector('.byline') ? bar.querySelector('.byline').innerText.split('•')[0] : '');
+  const txt = s => { const e = bar && bar.querySelector(s); return e ? (e.innerText || e.title || '').trim() : ''; };
+  // назва: панель плеєра → mediaSession → заголовок вкладки («Пісня - YouTube Music»)
+  const t = txt('.title') || (m && m.title) || document.title.replace(/\s*[-–|]\s*YouTube Music\s*$/i, '').trim();
+  const a = (txt('.byline').split('•')[0] || '').trim() || (m && m.artist) || '';
   return {title: t || '', artist: (a || '').trim(), album: m ? m.album : '', playing: !!(v && !v.paused && !v.ended),
           signed_in: !document.querySelector('a[href*="accounts.google.com/ServiceLogin"], ytmusic-settings-button a[href*="signin"]')};
 }
@@ -364,7 +366,7 @@ class Browser:
         page = self._ensure()
         info = page.evaluate(YTM_NOW_JS)
         t0 = time.time()
-        while wait_playing and not info.get("playing") and time.time() - t0 < wait_playing:
+        while wait_playing and not (info.get("playing") and info.get("title")) and time.time() - t0 < wait_playing:
             page.wait_for_timeout(700)
             info = page.evaluate(YTM_NOW_JS)
         return info

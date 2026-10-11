@@ -19,7 +19,8 @@ def set_enabled(on: bool):
     if platform.system() != "Windows":
         return False
     import winreg
-    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, KEY, 0, winreg.KEY_SET_VALUE) as k:
+    # CreateKeyEx: у «свіжому» профілі Windows розділу Run може ще не існувати
+    with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, KEY, 0, winreg.KEY_SET_VALUE) as k:
         if on:
             winreg.SetValueEx(k, NAME, 0, winreg.REG_SZ, command())
         else:
