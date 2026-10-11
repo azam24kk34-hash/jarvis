@@ -58,6 +58,7 @@ class Jarvis:
         self.usage.set_budget_getter(lambda: self.config.get("daily_budget"))
         self.toolbox.on_quit = self._quit_for_update
         self.quick = QuickCommands(self.config, self.toolbox, self.protocols)
+        self.toolbox.pc_context = self.quick.local.context  # мозок одразу бачить, що відкрито на ПК
         self._ducked = False
         self._pending_restore = 0.0
         self.brain = make_brain(self.config, self.toolbox, on_status=self._brain_status, usage=self.usage)
@@ -274,6 +275,13 @@ class Jarvis:
                 if first["t"] is None:
                     first["t"] = time.time() - t0
                 speech.feed(delta)
+            def filler():  # мозок мовчить довше 2,5 с — як у фільмі, коротко даємо знати, що працюємо
+                if first["t"] is None and shown["v"] and self.config.get("interim_speech", True):
+                    t = self.config.get("user_title") or "сер"
+                    speech.push(random.choice([f"Секунду, {t}.", f"Хвилинку, {t}.", f"Вже працюю, {t}.", f"Зараз гляну, {t}."]))
+            ft = threading.Timer(2.5, filler)
+            ft.daemon = True
+            ft.start()
             try:
                 self.brain.ask(f"[без звертання] {text}" if ambient else text, on_text=feed)
             except RuntimeError as e:
@@ -285,6 +293,7 @@ class Jarvis:
             except Exception as e:
                 print("Brain error:", repr(e))
                 speech.feed(" " + self._error_text(e))
+            ft.cancel()
             self.voice.busy = False
             print(f"Timing: перший текст {first['t'] or 0:.1f} с, уся відповідь {time.time() - t0:.1f} с "
                   f"({self.config.get('provider')}/{getattr(self.brain, 'model', self.config.get('model'))})")
@@ -305,7 +314,7 @@ class Jarvis:
                 return "Безкоштовний ліміт запитів поки вичерпано, сер. Спробуймо за хвилину, а якщо не допоможе — завтра."
             return "Перевищено ліміт запитів, сер. Спробуймо за хвилину."
         if name in ("InternalServerError", "OverloadedError", "ServiceUnavailableError"):
-            return "Сервери Anthropic зараз перевантажені, сер. Повторіть, будь ласка, за мить."
+            return "Сервери ШІ зараз перевантажені, сер. Повторіть, будь ласка, за мить. Прості команди й розмова працюють і без них."
         if name == "NotFoundError":
             return "Модель не знайдено. Перевірте назву моделі в налаштуваннях."
         if name == "PermissionDeniedError":

@@ -145,7 +145,7 @@ def test_updater_check(monkeypatch):
     assert updater.check("1.0.0") == (None, None)
 
 
-def test_openai_compatible_brain_tools_and_stream(config, toolbox):
+def test_openai_compatible_brain_tools_and_stream(config, toolbox, monkeypatch):
     """Безкоштовний провайдер (Gemini/Groq/Ollama) через OpenAI-сумісний API: стрімінг + виклик інструмента."""
     import types as T
     import openai
@@ -171,7 +171,7 @@ def test_openai_compatible_brain_tools_and_stream(config, toolbox):
         def __init__(self, **k):
             self.chat = T.SimpleNamespace(completions=T.SimpleNamespace(create=create))
 
-    openai.OpenAI = FakeClient
+    monkeypatch.setattr(openai, "OpenAI", FakeClient)
     config.data.update(provider="gemini", gemini_key="AIza-test")
     br = make_brain(config, toolbox)
     assert isinstance(br, OpenAIBrain) and br.ready()

@@ -22,6 +22,8 @@ class QuickCommands:
         self.config = config
         self.tb = toolbox
         self.protocols = protocols
+        from .local import LocalTalk
+        self.local = LocalTalk(config, toolbox)
 
     def _ack(self):
         return random.choice(ACK).format(t=self.config.get("user_title") or "сер")
@@ -59,7 +61,7 @@ class QuickCommands:
                 return ans, None
         t = _norm(text)
         if not t or len(t) > 60:
-            return None
+            return self._local(text)
         title = self.config.get("user_title") or "сер"
 
         if re.fullmatch(r"(постав (на )?)?пауз[ау]|зупини( музику| пісню)?|стоп музик[ау]|вимкни музику", t):
@@ -218,4 +220,13 @@ class QuickCommands:
             if not r.startswith("Натиснуто"):
                 return None  # хай мозок подивиться список кнопок і розбереться
             return r + ".", "click_in_app"
-        return None
+        return self._local(text)
+
+    def _local(self, text):
+        """Проста розмова й дані з ПК — миттєво, без ШІ."""
+        try:
+            r = self.local.handle(text)
+        except Exception as e:
+            print("Local talk error:", repr(e))
+            return None
+        return (r, None) if r else None
