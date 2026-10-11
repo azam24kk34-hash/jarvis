@@ -53,9 +53,13 @@ def snapshot():
     """[(exe_path, вікно)] програм користувача, відкритих просто зараз."""
     if not IS_WIN:
         return []
+    # виключаємо лише власний браузер Джарвіса (Playwright: node → msedge/chrome); програми,
+    # які Джарвіс відкрив для вас, теж дочірні процеси — їх треба пам'ятати
     mine = {os.getpid()}
     try:
-        mine |= {c.pid for c in psutil.Process().children(recursive=True)}
+        for c in psutil.Process().children(recursive=True):
+            if c.name().lower() in ("node.exe", "msedge.exe", "chrome.exe", "msedgewebview2.exe"):
+                mine.add(c.pid)
     except Exception:
         pass
     out = {}
