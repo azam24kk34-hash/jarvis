@@ -10,6 +10,8 @@ APP_NAME = "Jarvis"
 DEFAULTS = {
     "api_key": "",
     "provider": "gemini",            # "gemini" / "groq" / "ollama" — безкоштовно; "anthropic" — Claude (платно)
+    "openai_key": "",
+    "openai_model": "",
     "gemini_key": "",
     "groq_key": "",
     "gemini_model": "",              # порожньо = модель за замовчуванням
@@ -23,7 +25,8 @@ DEFAULTS = {
     "voice_rate": "+8%",
     "voice_pitch": "-6Hz",
     "wake_word_enabled": True,
-    "listen_mode": "always",         # "always" — чує все без «Джарвіс»; "wake" — лише після «Джарвіс»
+    "listen_mode": "wake",           # "wake" — реагує лише після «Джарвіс»; "always" — на все підряд
+    "listen_v74": False,             # службове: одноразово повернути режим «лише після Джарвіс»
     "wake_engine": "google",         # "google" — слово «Джарвіс»; "offline" — фраза «Hey Jarvis» без інтернету
     "wake_threshold": 0.5,           # чутливість офлайн-детектора (менше = чутливіше)
     "wake_words": ["джарвіс", "джарвис", "jarvis", "джервіс", "жарвіс", "джарві", "чарвіс"],
@@ -91,7 +94,7 @@ class Config:
 
     def public(self) -> dict:
         d = dict(self.data)
-        for k in ("api_key", "gemini_key", "groq_key"):
+        for k in ("api_key", "openai_key", "gemini_key", "groq_key"):
             key = d.get(k, "") or ""
             d[k + "_set"] = bool(key)
             d[k] = (key[:6] + "…" + key[-4:]) if len(key) > 12 else ""

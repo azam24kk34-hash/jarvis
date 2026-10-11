@@ -41,6 +41,8 @@ BRIEFING_PROMPT = ("[СИСТЕМА] Користувач щойно увімк�
 class Jarvis:
     def __init__(self):
         self.config = Config()
+        if not self.config.get("listen_v74"):  # оновлення 7.4: за замовчуванням — лише після «Джарвіс»
+            self.config.update({"listen_mode": "wake", "listen_v74": True})
         self.window = None
         self._audio_done = threading.Event()
         self._commands = queue.Queue()
@@ -260,8 +262,15 @@ class Jarvis:
             self.voice.busy = True
             # відповідь озвучується й з'являється в журналі реченнями, поки мозок її ще пише
             speech = self.voice.stream(follow_up=True, on_sentence=on_sentence)
+            t0 = time.time()
+            first = {"t": None}
+
+            def feed(delta):
+                if first["t"] is None:
+                    first["t"] = time.time() - t0
+                speech.feed(delta)
             try:
-                self.brain.ask(f"[без звертання] {text}" if ambient else text, on_text=speech.feed)
+                self.brain.ask(f"[без звертання] {text}" if ambient else text, on_text=feed)
             except RuntimeError as e:
                 if str(e) == "NO_KEY":
                     speech.feed(" Сер, мені потрібен ключ — безкоштовний ключ Gemini підійде. Відкриваю налаштування.")
@@ -272,6 +281,8 @@ class Jarvis:
                 print("Brain error:", repr(e))
                 speech.feed(" " + self._error_text(e))
             self.voice.busy = False
+            print(f"Timing: перший текст {first['t'] or 0:.1f} с, уся відповідь {time.time() - t0:.1f} с "
+                  f"({self.config.get('provider')}/{getattr(self.brain, 'model', self.config.get('model'))})")
             speech.end()
             self.js("HUD.endReply")
             speech.wait()
@@ -515,7 +526,7 @@ class Api:
 
     def save_settings(self, values):
         values = dict(values or {})
-        for k in ("api_key", "gemini_key", "groq_key"):
+        for k in ("api_key", "openai_key", "gemini_key", "groq_key"):
             if k in values and (not values[k] or "…" in values[k]):
                 values.pop(k)  # не перезаписуємо збережений ключ порожнім/прихованим
         old = (self._j.config.get("provider"), self._j.config.get("model"))

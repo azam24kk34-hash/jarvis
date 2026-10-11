@@ -1,5 +1,5 @@
 """Миттєві команди без звернення до Claude: «пауза», «далі», «гучніше», «котра година», «протокол вечірка»…
-Виконуються локально за частки секунди й нічого не коштують. Усе інше йде в мозок (Claude)."""
+Виконуються локально за частки секунди й нічого не коштують. Усе інше йде в мозок (Gemini / OpenAI / Claude)."""
 import datetime as dt
 import random
 import re
@@ -11,7 +11,8 @@ WEEKDAYS = ["понеділок", "вівторок", "середа", "четв�
 
 def _norm(text):
     t = text.lower().strip()
-    t = re.sub(r"[.,!?…«»\"%]", " ", t)
+    t = re.sub(r"[,!?…«»\"%]", " ", t)
+    t = re.sub(r"(?<!\w)\.|\.(?!\w)", " ", t)  # крапки в адресах сайтів (rozetka.com.ua) лишаємо
     t = re.sub(r"\b(будь ласка|please|будь-ласка|джарвіс|джарвис|jarvis)\b", " ", t)
     return re.sub(r"\s+", " ", t).strip()
 
@@ -120,4 +121,45 @@ class QuickCommands:
             if p:
                 self.tb.run("run_protocol", {"name": key})
                 return f"Протокол «{key}» активовано, {title}.", "run_protocol"
+        # ---------- сайти й пошук
+        m = re.fullmatch(r"(?:знайди|пошукай|загугли|погугли)(?: в| у)?(?: гуглі| google| інтернеті)? (.{2,})", t)
+        if m:
+            self.tb.run("open_website", {"search_query": m.group(1)})
+            return f"Шукаю: {m.group(1)}.", "open_website"
+        m = re.fullmatch(r"(?:відкрий|зайди на|перейди на) (?:сайт )?([\w-]+\.(?:com|ua|net|org|io|tv|gov\.ua|com\.ua)(?:/\S*)?)", t)
+        if m:
+            self.tb.run("open_website", {"url": m.group(1)})
+            return self._ack(), "open_website"
+        # ---------- програми: «відкрий Chrome», «запусти Телеграм», «закрий Steam»
+        m = re.fullmatch(r"(?:відкрий|запусти|включи|увімкни|ввімкни|відкрити|запустити)(?: мені)?(?: програму)? (.{2,40})", t)
+        if m and not re.search(r"\b(музик|пісн|плейлист|протокол|програми|вікна|сайт)\b", m.group(1)):
+            r = self.tb.resolve_app(m.group(1))
+            if r:
+                self.tb.launch_resolved(r)
+                return f"Відкриваю {r[2]}, {title}.", "open_application"
+        m = re.fullmatch(r"(?:закрий|вимкни|заверши)(?: програму)? (.{3,40})", t)
+        if m and not re.search(r"\b(вікно|все|усе|музик|звук|комп'ютер|пк)\b", m.group(1)):
+            r = self.tb.run("close_application", {"name": m.group(1)})
+            if r.startswith("Закрито"):
+                return f"Закрив {m.group(1)}.", "close_application"
+        # ---------- погода й нагадування
+        m = re.fullmatch(r"(?:яка|що з|що за) погод[аиою](?: зараз| сьогодні)?(?: (?:в|у) (.+))?|погода(?: (?:в|у) (.+))?", t)
+        if m:
+            city = m.group(1) or m.group(2)
+            r = self.tb.run("get_weather", {"city": city} if city else {})
+            if r.startswith(("Помилка", "Не знайшов")):
+                return None
+            line = r.splitlines()[0].replace("°C", " градусів").replace("°", " градусів").replace("м/с", "метрів за секунду")
+            return line + ".", "get_weather"
+        m = re.fullmatch(r"нагадай(?: мені)? через (\d+) (хвилин\w*|годин\w*) (.{2,})", t)
+        if m:
+            mins = int(m.group(1)) * (60 if m.group(2).startswith("годин") else 1)
+            self.tb.run("set_reminder", {"text": m.group(3), "in_minutes": mins})
+            return f"Нагадаю через {m.group(1)} {m.group(2)}.", "set_reminder"
+        m = re.fullmatch(r"(?:постав )?таймер на (\d+) (хвилин\w*|секунд\w*)", t)
+        if m:
+            n = int(m.group(1))
+            mins = n if m.group(2).startswith("хвилин") else n / 60
+            self.tb.run("set_reminder", {"text": "таймер", "in_minutes": mins})
+            return f"Таймер на {n} {m.group(2)}.", "set_reminder"
         return None

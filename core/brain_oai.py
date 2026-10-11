@@ -10,9 +10,12 @@ import threading
 from .brain import MAX_HISTORY, system_prompt, time_context
 
 PROVIDERS = {
+    # effort — наскільки довго модель «думає» перед відповіддю; мінімум = найшвидша відповідь
+    "openai": {"name": "OpenAI", "base": "https://api.openai.com/v1", "model": "gpt-6-luna", "effort": "none",
+               "key_url": "https://platform.openai.com/api-keys", "vision": True},
     "gemini": {"name": "Google Gemini", "base": "https://generativelanguage.googleapis.com/v1beta/openai/",
-               "model": "gemini-3.8-flash", "key_url": "https://aistudio.google.com/apikey", "vision": True},
-    "groq": {"name": "Groq", "base": "https://api.groq.com/openai/v1",
+               "model": "gemini-3.8-flash", "effort": "low", "key_url": "https://aistudio.google.com/apikey", "vision": True},
+    "groq": {"name": "Groq", "base": "https://api.groq.com/openai/v1", "effort": "low",
              "model": "openai/gpt-oss-120b", "key_url": "https://console.groq.com/keys", "vision": False},
     "ollama": {"name": "Ollama (локально)", "base": "http://localhost:11434/v1",
                "model": "qwen2.5:7b", "key_url": "https://ollama.com/download", "vision": False, "nokey": True},
@@ -38,6 +41,7 @@ class OpenAIBrain:
         self.usage = usage
         self.history = []
         self._lock = threading.Lock()
+        self._effort_ok = True
 
     # ------------------------------------------------------------ налаштування провайдера
     @property
@@ -133,9 +137,23 @@ class OpenAIBrain:
             return re.sub(r"[*#`_]+", "", " ".join(final)).strip() or "Готово, сер."
 
     def _request(self, client, on_text):
+        import openai
         system = {"role": "system", "content": system_prompt(self.config, getattr(self.toolbox, "memory", None))}
-        stream = client.chat.completions.create(model=self.model, messages=[system] + self.history,
-                                                tools=self._tools(), stream=True, temperature=0.6)
+        kw = dict(model=self.model, messages=[system] + self.history, tools=self._tools(), stream=True)
+        effort = self.config.get(f"{self.provider}_effort") or self.info.get("effort")
+        if effort and self._effort_ok:
+            kw["reasoning_effort"] = effort
+        else:
+            kw["temperature"] = 0.6
+        try:
+            stream = client.chat.completions.create(**kw)
+        except openai.BadRequestError as e:
+            if "reasoning" not in str(e).lower() or "reasoning_effort" not in kw:
+                raise
+            print("reasoning_effort не підтримується — вимикаю:", str(e)[:200])
+            self._effort_ok = False
+            kw.pop("reasoning_effort")
+            stream = client.chat.completions.create(**kw)
         content, calls, usage = [], {}, None
         for chunk in stream:
             if getattr(chunk, "usage", None):

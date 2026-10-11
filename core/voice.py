@@ -150,7 +150,7 @@ class Voice:
         import speech_recognition as sr
         from .wakeword import CHUNK
         r = sr.Recognizer()
-        r.pause_threshold = 0.7
+        r.pause_threshold = 0.6
         r.dynamic_energy_threshold = True
         try:
             mic = sr.Microphone(sample_rate=16000)

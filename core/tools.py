@@ -55,7 +55,19 @@ TRANSLIT = {
 }
 
 
+_SC_CACHE = {"t": 0.0, "items": []}
+
+
 def _shortcuts():
+    """Ярлики з меню «Пуск» і робочого столу (кеш на 5 хвилин — сканування повільне)."""
+    if time.time() - _SC_CACHE["t"] < 300 and _SC_CACHE["items"]:
+        return _SC_CACHE["items"]
+    items = _scan_shortcuts()
+    _SC_CACHE.update(t=time.time(), items=items)
+    return items
+
+
+def _scan_shortcuts():
     items = []
     for d in START_MENU_DIRS:
         if d.exists():
@@ -253,30 +265,39 @@ class Toolbox:
         except Exception as e:  # повертаємо помилку Claude, щоб він пояснив
             return f"Помилка: {type(e).__name__}: {e}"
 
-    def t_open_application(self, name):
-        q = name.strip().lower()
+    def resolve_app(self, name):
+        """Знайти програму без запуску: ('uri'|'exe'|'lnk', ціль, назва) або None. Швидко (ярлики кешуються)."""
+        q = name.strip().lower().strip(" .,!?«»\"")
         q = TRANSLIT.get(q, q)
-        self.card("launch", {"title": name.upper(), "sub": "ЗАПУСК ПРОГРАМИ"})
         if q in APP_ALIASES:
-            _open(APP_ALIASES[q])
-            return f"Відкрито: {name}"
+            return "uri", APP_ALIASES[q], name
         if self.apps:  # програма, якою вже користувались — запускаємо за відомим шляхом
             exe, a = self.apps.find(q)
             if exe:
-                from .apps import launch
-                launch(exe)
-                return f"Відкрито: {a['name']}"
-        shortcuts = _shortcuts()
-        names = {p.stem.lower(): p for p in shortcuts}
-        # точний збіг / входження / нечіткий збіг
+                return "exe", exe, a["name"]
+        names = {p.stem.lower(): p for p in _shortcuts()}
         hit = next((p for n, p in names.items() if n == q), None) \
             or next((p for n, p in names.items() if q in n and "uninstall" not in n and "видал" not in n), None)
-        if not hit:
+        if not hit and len(q) >= 4:
             close = difflib.get_close_matches(q, list(names), n=1, cutoff=0.6)
             hit = names[close[0]] if close else None
-        if hit:
-            _open(str(hit))
-            return f"Відкрито: {hit.stem}"
+        return ("lnk", str(hit), hit.stem) if hit else None
+
+    def launch_resolved(self, r):
+        kind, target, label = r
+        self.card("launch", {"title": label.upper(), "sub": "ЗАПУСК ПРОГРАМИ"})
+        if kind == "exe":
+            from .apps import launch
+            launch(target)
+        else:
+            _open(target)
+        return f"Відкрито: {label}"
+
+    def t_open_application(self, name):
+        r = self.resolve_app(name)
+        if r:
+            return self.launch_resolved(r)
+        q = TRANSLIT.get(name.strip().lower(), name.strip().lower())
         try:
             if IS_WIN:
                 subprocess.Popen(f'start "" "{q}"', shell=True)
@@ -407,9 +428,18 @@ class Toolbox:
         return f"Виконано: {action}"
 
     def t_get_weather(self, city=None, days=1):
-        city = city or self.config.get("city")
-        g = requests.get("https://geocoding-api.open-meteo.com/v1/search",
-                         params={"name": city, "count": 1, "language": "uk"}, timeout=10).json()
+        city = (city or self.config.get("city")).strip()
+        g = {}
+        # «у Львові» → Львів, «в Києві» → Київ, «в Одесі» → Одеса, «у Дніпрі» → Дніпро
+        cands = [city]
+        for end, rep in (("ові", "ів"), ("єві", "їв"), ("еві", "ів"), ("і", "а"), ("і", "о"), ("у", "")):
+            if city.lower().endswith(end):
+                cands.append(city[: -len(end)] + rep)
+        for c in cands:
+            g = requests.get("https://geocoding-api.open-meteo.com/v1/search",
+                             params={"name": c, "count": 1, "language": "uk"}, timeout=10).json()
+            if g.get("results"):
+                break
         if not g.get("results"):
             return f"Не знайшов місто {city}"
         loc = g["results"][0]

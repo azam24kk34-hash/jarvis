@@ -527,6 +527,9 @@ document.addEventListener("click", () => { ensureAudio(); if (audioCtx.state ===
 
 /* ---------- НАЛАШТУВАННЯ ---------- */
 const PROVIDERS = {
+  openai: { key: "openai_key", model: "openai_model", def: "gpt-6-luna", ph: "sk-…",
+    models: ["gpt-6-luna", "gpt-6.1-sol"],
+    hint: "platform.openai.com/api-keys → «Create new secret key». Потрібен баланс на platform.openai.com → Billing (підписка ChatGPT Plus сюди не входить). gpt-6-luna — найшвидша й найдешевша: ≈0,05 цента за відповідь." },
   gemini: { key: "gemini_key", model: "gemini_model", def: "gemini-3.8-flash", ph: "AIza…",
     models: ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"],
     hint: "Безкоштовно: aistudio.google.com/apikey → «Create API key» (потрібен лише Google-акаунт, без картки). Увага: на безкоштовному тарифі Google може використовувати запити для навчання моделей — не обговорюйте з Джарвісом службове й чутливе." },
@@ -544,7 +547,7 @@ let SETTINGS_RAW = {};
 function renderProvider() {
   const p = PROVIDERS[$("#s-provider").value], s = SETTINGS_RAW;
   $("#s-key-label").style.display = p.key ? "" : "none";
-  $("#s-key-title").textContent = { gemini_key: "Ключ Google Gemini", groq_key: "Ключ Groq", api_key: "Ключ Anthropic API" }[p.key] || "";
+  $("#s-key-title").textContent = { openai_key: "Ключ OpenAI API", gemini_key: "Ключ Google Gemini", groq_key: "Ключ Groq", api_key: "Ключ Anthropic API" }[p.key] || "";
   $("#s-key").value = "";
   $("#s-key").placeholder = p.key && s[p.key + "_set"] ? `Збережено: ${s[p.key]}` : (p.ph || "");
   $("#s-key-hint").textContent = p.hint;
@@ -611,7 +614,7 @@ $("#s-save").onclick = async () => {
 
 /* ---------- ЗАВАНТАЖЕННЯ ---------- */
 const BOOT = [
-  "STARK INDUSTRIES // MARK OS v7.3",
+  "STARK INDUSTRIES // MARK OS v7.4",
   "Ініціалізація нейроядра ............ <b>OK</b>",
   "Підключення до Claude AI ........... <b>OK</b>",
   "Калібрування аудіосенсорів ......... <b>OK</b>",
@@ -797,7 +800,7 @@ const DEMO = {
       daily: [{ date: "2026-10-11", min: 7, max: 13, code: 2 }, { date: "2026-10-12", min: 6, max: 11, code: 61 }, { date: "2026-10-13", min: 5, max: 12, code: 3 },
               { date: "2026-10-14", min: 4, max: 14, code: 0 }, { date: "2026-10-15", min: 6, max: 13, code: 80 }] }); }, 700);
     setTimeout(() => { HUD.addMessage("jarvis", "Протокол «вечірка» активовано, сер. Сусіди, підозрюю, не в захваті."); HUD.setState("listening"); }, 1100);
-    }, 2600); return { version: "7.3.0-demo", settings: { sfx: false, voice_fx: true },
+    }, 2600); return { version: "7.4.0-demo", settings: { sfx: false, voice_fx: true },
       protocols: [{ name: "вечірка" }, { name: "тиша" }, { name: "робота" }, { name: "діагностика" }] }; },
   stats: () => ({ cpu: 20 + Math.random() * 25, cores: Array.from({ length: 16 }, () => Math.random() * 70), ram: 58, ram_used: 18.6, ram_total: 32,
     disk: 71, battery: null, down: Math.random() * 900, up: Math.random() * 200, procs: 287, uptime: 93210,
