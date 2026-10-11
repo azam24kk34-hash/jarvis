@@ -46,6 +46,7 @@ DEFAULTS = {
     "browser_channel": "msedge",     # браузер для Джарвіса: "msedge" або "chrome"
     "browser_minimize_music": True,  # після запуску музики згортати вікно браузера
     "duck_music": True,              # приглушувати музику, поки Джарвіс слухає/говорить
+    "auto_update": True,             # самі ставимо нові версії з GitHub, коли ПК вільний
     "daily_budget": 1.0,             # $ на день; попередження на 80% і 100% (0 = без ліміту)
 }
 

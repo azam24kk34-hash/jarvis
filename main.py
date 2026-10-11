@@ -54,6 +54,7 @@ class Jarvis:
                                browser=self.browser, apps=self.apps)
         self.usage = Usage(on_budget=self._budget_alert)
         self.usage.set_budget_getter(lambda: self.config.get("daily_budget"))
+        self.toolbox.on_quit = self._quit_for_update
         self.quick = QuickCommands(self.config, self.toolbox, self.protocols)
         self._ducked = False
         self._pending_restore = 0.0
@@ -121,15 +122,55 @@ class Jarvis:
             self.js("HUD.toolUsed", "web_search")
             self.js("HUD.holo", "intel", {"query": detail})
 
-    def check_update(self):
+    def update_loop(self):
+        """Автооновлення: через 1,5 хв після старту, далі кожні 3 години перевіряємо релізи на GitHub.
+        Нову версію ставимо самі, коли Джарвіс нічим не зайнятий, а ви не працюєте за ПК
+        (або одразу після запуску) — інсталятор тихо замінить програму й запустить її знову."""
+        time.sleep(90)
+        first = True
+        while True:
+            try:
+                self.check_update(at_startup=first)
+            except Exception as e:
+                print("Update check error:", repr(e))
+            first = False
+            time.sleep(3 * 3600)
+
+    def check_update(self, at_startup=False):
+        from core import updater
+        from core.monitor import idle_seconds
+        new, url = updater.check(VERSION)
+        if not (new and url):
+            return
+        title = self.config.get("user_title")
+        if not self.config.get("auto_update"):
+            self._alert(f"{title.capitalize()}, доступна нова версія {new}. Скажіть «онови себе», і я встановлю її.", "info")
+            return
+        # чекаємо слушного моменту: не перебиваємо розмову, музику-команди чи вашу роботу
+        for _ in range(240):  # до 2 годин
+            quiet = not self.voice.busy and not self.voice.speaking and self._commands.empty()
+            if quiet and (at_startup or idle_seconds() > 120):
+                break
+            time.sleep(30)
+        msg = f"{title.capitalize()}, встановлюю оновлення до версії {new}. Повернуся за хвилину."
+        self.js("HUD.alert", msg, "info")
+        self.js("HUD.addMessage", "jarvis", msg)
+        self.voice.speak(msg, follow_up=False)
+        print("Auto-update to", new)
+        updater.install(url)
+        self._quit_for_update()
+
+    def _quit_for_update(self):
+        """Звільняємо файли для інсталятора: закриваємо браузер і саме вікно (інсталятор потім запустить нову версію)."""
+        time.sleep(3)
         try:
-            from core import updater
-            new, url = updater.check(VERSION)
-            if new and url:
-                title = self.config.get("user_title")
-                self._alert(f"{title.capitalize()}, доступна нова версія {new}. Скажіть «онови себе», і я встановлю її.", "info")
-        except Exception as e:
-            print("Update check error:", repr(e))
+            self.browser.close()
+        except Exception:
+            pass
+        try:
+            self.window.destroy()
+        except Exception:
+            os._exit(0)
 
     def ensure_autostart(self):
         """Jarvis вмикається разом з комп'ютером. Щоразу оновлюємо шлях у реєстрі —
@@ -363,7 +404,7 @@ class Api:
             j.monitor.start()
             j.voice.prewarm(WAKE_REPLIES + [OFFLINE_LINE])
             threading.Timer(2.0, j.self_test).start()
-            threading.Timer(90, j.check_update).start()
+            threading.Thread(target=j.update_loop, daemon=True, name="updater").start()
             threading.Timer(3.4, j.greet).start()
         mini = "--autostart" in sys.argv and bool(j.config.get("start_mini"))
         return {"version": VERSION, "settings": j.config.public(), "protocols": self.protocols(), "mini": mini}

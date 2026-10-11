@@ -9,6 +9,7 @@ import os
 import platform
 import re
 import subprocess
+import threading
 import time
 import urllib.parse
 import webbrowser
@@ -122,6 +123,7 @@ class Toolbox:
     def __init__(self, config, reminders, protocols=None, ui_notify=None, memory=None, browser=None, apps=None):
         self.browser = browser
         self.apps = apps
+        self.on_quit = None
         self.config = config
         self.reminders = reminders
         self.protocols = protocols
@@ -642,6 +644,8 @@ class Toolbox:
         self.card("protocol", {"name": f"оновлення до {new}", "steps": ["ЗАВАНТАЖЕННЯ", "ВСТАНОВЛЕННЯ", "ПЕРЕЗАПУСК"], "done": 0})
         updater.install(url, on_progress=lambda p: None)
         self.card("protocol", {"name": f"оновлення до {new}", "steps": ["ЗАВАНТАЖЕННЯ", "ВСТАНОВЛЕННЯ", "ПЕРЕЗАПУСК"], "done": 2})
+        if self.on_quit:
+            threading.Thread(target=self.on_quit, daemon=True).start()
         return f"Завантажено версію {new}. Інсталятор зараз закриє мене й запустить оновленого. До зустрічі за хвилину."
 
     # ---------- програми з минулого разу

@@ -55,6 +55,6 @@ def install(url, on_progress=None):
                 done += len(chunk)
                 if on_progress and total:
                     on_progress(done * 100 // total)
-    subprocess.Popen([path, "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS"],
+    subprocess.Popen([path, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS"],
                      creationflags=0x00000008 if os.name == "nt" else 0)
     return path
