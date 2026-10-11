@@ -24,15 +24,33 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pytest
       - name: Core + Windows tests
-        run: python -m pytest -v -m "not network" --junitxml=test-core.xml
+        shell: pwsh
+        run: |
+          python -m pytest -v -rA -m "not network" --junitxml=test-core.xml 2>&1 | Tee-Object -FilePath test-core.txt
+          exit $LASTEXITCODE
       - name: Network tests (YouTube Music, edge-tts, weather)
         if: always()
-        run: python -m pytest -v -m network --junitxml=test-network.xml
+        shell: pwsh
+        run: |
+          python -m pytest -v -rA -m network --junitxml=test-network.xml 2>&1 | Tee-Object -FilePath test-network.txt
+          exit $LASTEXITCODE
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
-          path: test-*.xml
+          path: test-*.*
+      # Звіт тестів у гілку ci-results — його можна прочитати через GitHub API (для діагностики)
+      - name: Publish test report to ci-results branch
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p /tmp/rep && cp test-*.txt /tmp/rep/ 2>/dev/null || true
+          git config user.name "jarvis-ci"; git config user.email "ci@users.noreply.github.com"
+          git checkout --orphan ci-results
+          git rm -rfq . >/dev/null 2>&1 || true
+          cp /tmp/rep/* . 2>/dev/null || true
+          echo "${{ github.sha }}" > commit.txt
+          git add -A && git commit -qm "test report ${{ github.sha }}" && git push -f origin ci-results
 
   # ---------- Збірка: папка (швидкий старт) + інсталятор + портативний zip
   build:
@@ -83,6 +101,7 @@ jobs:
         run: |
           $p = Start-Process -FilePath "dist\Jarvis\Jarvis.exe" -ArgumentList "--selftest" -Wait -PassThru
           Get-Content "$env:TEMP\jarvis_selftest.txt"
+          Get-Content "$env:TEMP\jarvis_selftest.txt" | ForEach-Object { Write-Output "::notice title=selftest::$_" } | Select-Object -First 9
           if ($p.ExitCode -ne 0) { Write-Error "Self-test failed (exit $($p.ExitCode))"; exit 1 }
       - name: Installer (Inno Setup)
         shell: pwsh
