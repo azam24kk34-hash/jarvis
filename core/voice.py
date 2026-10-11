@@ -13,7 +13,9 @@ import numpy as np
 
 WAKE_REPLIES = ["Так, сер?", "Слухаю, сер.", "До ваших послуг.", "Для вас, сер, — завжди.", "Я тут, сер.", "Слухаю уважно."]
 
-FOLLOW_UP_SECONDS = 7  # скільки секунд після відповіді можна говорити без «Джарвіс»
+FOLLOW_UP_SECONDS = 12  # скільки секунд після відповіді можна говорити без «Джарвіс»
+SLEEP_RE = re.compile(r"\b(спи|засни|не слухай|режим сну|відпочинь|помовч|тихий режим)\b")
+WAKE_RE = re.compile(r"\b(прокинься|прокидайся|слухай мене|я тут|режим розмови)\b")
 AWAKE_SECONDS = 8      # скільки чекати команду після одного лише «Джарвіс»
 
 
@@ -31,6 +33,8 @@ class Voice:
         self.on_heard = on_heard or (lambda t: None)
         self.on_stop = on_stop or (lambda: None)
         self.on_notice = on_notice or (lambda t: None)
+        self.sleeping = False                 # «Джарвіс, спи» — слухає лише своє ім'я
+        self.music_playing = lambda: False    # під час музики завжди потрібне «Джарвіс» (щоб не реагувати на пісні)
         self.level = 0.0
         self._stop = False
         self.busy = False
@@ -166,7 +170,8 @@ class Voice:
         with mic as source:
             source.stream = _Tap(source.stream, self._on_audio)
             while True:
-                offline = self.config.get("wake_engine") == "offline" and not detector_failed
+                always = self.always_active()
+                offline = self.config.get("wake_engine") == "offline" and not detector_failed and not always
                 if offline and detector is None:
                     try:
                         detector = self._load_detector()
@@ -228,6 +233,21 @@ class Voice:
                 if not text:
                     continue
                 has_wake, rest = self._strip_wake(text)
+                low = text.lower()
+                # «Джарвіс, спи» / «Джарвіс, прокинься» — режим сну без звернення до мозку
+                if (has_wake or awake) and SLEEP_RE.search(low):
+                    self._force_command, self._awake_until, self.sleeping = False, 0, True
+                    self.on_heard(text)
+                    self.speak("Добре. Скажіть «Джарвіс, прокинься», коли знадоблюсь.", follow_up=False)
+                    continue
+                if self.sleeping:
+                    if has_wake and (WAKE_RE.search(low) or not rest):
+                        self.sleeping = False
+                        self.on_heard(text)
+                        self.speak("Я знову з вами, сер.", follow_up=True)
+                        continue
+                    if not has_wake:
+                        continue
                 if self._force_command or awake:
                     self._force_command = False
                     self._awake_until = 0
@@ -239,7 +259,20 @@ class Voice:
                         self.on_command(rest)
                     else:
                         self._wake_reply()
+                elif always and len(re.findall(r"\w+", text)) >= 2:
+                    # режим «завжди слухаю»: будь-яка фраза — до Джарвіса (мозок сам відкине чужі розмови)
+                    self.on_heard(text)
+                    self.on_command(text, ambient=True)
                 # інакше — звичайна розмова в кімнаті, ігноруємо
+
+    def always_active(self):
+        """Чи слухати все без «Джарвіс» просто зараз."""
+        if self.config.get("listen_mode") != "always" or self.sleeping:
+            return False
+        try:
+            return not self.music_playing()
+        except Exception:
+            return True
 
     def _wake_reply(self):
         self.on_state("awake")
@@ -298,6 +331,8 @@ class SpeechStream:
 
     def push(self, text):
         text = re.sub(r"[*#`_]+", "", text).strip()
+        if re.fullmatch(r"[\s—–\-.]*", text):  # «—» = «це не до мене» (режим «завжди слухаю»)
+            return
         if text:
             self.first = False
             try:

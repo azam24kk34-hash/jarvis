@@ -157,6 +157,7 @@ class Browser:
         self._q = queue.Queue()
         self._thread = None
         self._pw = self._ctx = self._page = None
+        self.music_playing = False
         self._duck_lock = threading.Lock()
         self._duck_want = self._duck_state = False
         self._duck_pending = False
@@ -188,7 +189,12 @@ class Browser:
             finally:
                 done.set()
 
+    def _track(self, info):
+        self.music_playing = bool(info.get("playing"))
+        return info
+
     def _reset(self):
+        self.music_playing = False
         for obj in (self._ctx, self._pw):
             try:
                 if obj is self._pw and obj:
@@ -364,11 +370,11 @@ class Browser:
 
     def _ytm_now(self, wait_playing=0):
         page = self._ensure()
-        info = page.evaluate(YTM_NOW_JS)
+        info = self._track(page.evaluate(YTM_NOW_JS))
         t0 = time.time()
         while wait_playing and not (info.get("playing") and info.get("title")) and time.time() - t0 < wait_playing:
             page.wait_for_timeout(700)
-            info = page.evaluate(YTM_NOW_JS)
+            info = self._track(page.evaluate(YTM_NOW_JS))
         return info
 
     def _ytm_ensure_playing(self, page):
@@ -440,7 +446,7 @@ class Browser:
                 raise RuntimeError("YouTube Music зараз не відкритий")
         ok = page.evaluate(YTM_CONTROL_JS, action)
         page.wait_for_timeout(1200)
-        info = page.evaluate(YTM_NOW_JS)
+        info = self._track(page.evaluate(YTM_NOW_JS))
         info["ok"] = bool(ok)
         return info
 

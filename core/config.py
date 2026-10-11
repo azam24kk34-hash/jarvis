@@ -23,6 +23,7 @@ DEFAULTS = {
     "voice_rate": "+8%",
     "voice_pitch": "-6Hz",
     "wake_word_enabled": True,
+    "listen_mode": "always",         # "always" — чує все без «Джарвіс»; "wake" — лише після «Джарвіс»
     "wake_engine": "google",         # "google" — слово «Джарвіс»; "offline" — фраза «Hey Jarvis» без інтернету
     "wake_threshold": 0.5,           # чутливість офлайн-детектора (менше = чутливіше)
     "wake_words": ["джарвіс", "джарвис", "jarvis", "джервіс", "жарвіс", "джарві", "чарвіс"],

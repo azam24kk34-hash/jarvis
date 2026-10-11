@@ -55,6 +55,7 @@ class Jarvis:
         self.usage = Usage(on_budget=self._budget_alert)
         self.usage.set_budget_getter(lambda: self.config.get("daily_budget"))
         self.toolbox.on_quit = self._quit_for_update
+        self.voice.music_playing = lambda: self.browser.music_playing
         self.quick = QuickCommands(self.config, self.toolbox, self.protocols)
         self._ducked = False
         self._pending_restore = 0.0
@@ -202,16 +203,18 @@ class Jarvis:
         self.js("HUD.playAudio", base64.b64encode(mp3).decode())
         self._audio_done.wait(timeout=len(mp3) / 6000 + 6)
 
-    def submit(self, text, hidden=False):
+    def submit(self, text, hidden=False, ambient=False):
+        """ambient=True — фраза почута без «Джарвіс» (режим «завжди слухаю»)."""
         text = (text or "").strip()
         if text:
-            self._commands.put((text, hidden))
+            self._commands.put((text, hidden, ambient))
 
     def _worker(self):
         while True:
-            text, hidden = self._commands.get()
+            text, hidden, ambient = self._commands.get()
             if not hidden:
-                self.js("HUD.addMessage", "user", text)
+                if not ambient:
+                    self.js("HUD.addMessage", "user", text)
                 self.js("HUD.setState", "thinking")
                 if time.time() < self._pending_restore and re.fullmatch(
                         r"\W*(так|давай|відкривай|відкрий|звісно|ага|yes|угу|так,? (відкрий|давай)|відкрий (усі|все|їх))\W*", text.lower()):
@@ -231,6 +234,8 @@ class Jarvis:
                     quick = None
                 if quick:  # миттєва локальна команда — без Claude, без затримки й витрат
                     reply, tool = quick
+                    if ambient:
+                        self.js("HUD.addMessage", "user", text)
                     if tool:
                         self.js("HUD.toolUsed", tool)
                     self.js("HUD.addMessage", "jarvis", reply)
@@ -238,13 +243,25 @@ class Jarvis:
                     self.voice.speak(reply)
                     self.js("HUD.setState", "listening" if self.voice.mic_ok else "idle")
                     continue
+            if ambient and not self.brain.ready():
+                self.js("HUD.setState", "listening" if self.voice.mic_ok else "idle")
+                continue  # без мозку фонові фрази ігноруємо (прості команди вже перевірено вище)
             self.js("HUD.setState", "thinking")
-            self.js("HUD.beginReply")
+            shown = {"v": not ambient}
+            if not ambient:
+                self.js("HUD.beginReply")
+
+            def on_sentence(t, _text=text):
+                if not shown["v"]:  # фонова фраза виявилась зверненням — тепер показуємо її в журналі
+                    shown["v"] = True
+                    self.js("HUD.addMessage", "user", _text)
+                    self.js("HUD.beginReply")
+                self.js("HUD.replyText", t)
             self.voice.busy = True
-            # відповідь озвучується й з'являється в журналі реченнями, поки Claude її ще пише
-            speech = self.voice.stream(follow_up=True, on_sentence=lambda t: self.js("HUD.replyText", t))
+            # відповідь озвучується й з'являється в журналі реченнями, поки мозок її ще пише
+            speech = self.voice.stream(follow_up=True, on_sentence=on_sentence)
             try:
-                self.brain.ask(text, on_text=speech.feed)
+                self.brain.ask(f"[без звертання] {text}" if ambient else text, on_text=speech.feed)
             except RuntimeError as e:
                 if str(e) == "NO_KEY":
                     speech.feed(" Сер, мені потрібен ключ — безкоштовний ключ Gemini підійде. Відкриваю налаштування.")

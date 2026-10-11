@@ -15,7 +15,8 @@ const TOOL_NAMES = {
 let SETTINGS = { sfx: true, voice_fx: true };
 const STATES = {
   idle:        ["STANDBY",     "Мікрофон неактивний — пишіть команду нижче"],
-  listening:   ["ONLINE",      "Скажіть «Джарвіс» · Ctrl+Alt+J — говорити · Ctrl+Alt+Space — сховати"],
+  listening:   ["ONLINE",      "Слухаю вас — просто говоріть · «Джарвіс, спи» — пауза · Ctrl+Alt+Space — сховати"],
+  listening_wake: ["ONLINE",   "Скажіть «Джарвіс» · Ctrl+Alt+J — говорити · Ctrl+Alt+Space — сховати"],
   listening_off: ["ONLINE",    "Скажіть «Hey Jarvis» або натисніть Ctrl+Alt+J"],
   awake:       ["LISTENING",   "Слухаю, сер…"],
   recognizing: ["PROCESSING",  "Розпізнаю мову…"],
@@ -46,7 +47,8 @@ const HUD = {
     const prev = state;
     state = s;
     document.body.dataset.state = s;
-    const key = s === "listening" && SETTINGS.wake_engine === "offline" ? "listening_off" : s;
+    const key = s !== "listening" ? s : SETTINGS.listen_mode === "wake"
+      ? (SETTINGS.wake_engine === "offline" ? "listening_off" : "listening_wake") : "listening";
     const [big, hint] = STATES[key] || [s.toUpperCase(), ""];
     $("#state-big").textContent = big;
     $("#state-hint").textContent = hint;
@@ -567,6 +569,7 @@ async function openSettings() {
   $("#s-city").value = s.city || "";
   $("#s-wake").checked = !!s.wake_word_enabled;
   $("#s-speak").checked = !!s.speak_responses;
+  $("#s-always").checked = (s.listen_mode || "always") === "always";
   $("#s-web").checked = !!s.web_search;
   $("#s-brief").checked = !!s.morning_briefing;
   $("#s-alerts").checked = !!s.proactive_alerts;
@@ -594,7 +597,7 @@ $("#s-save").onclick = async () => {
   await api("save_settings", {
     provider: $("#s-provider").value, ...providerValues(), voice: $("#s-voice").value,
     user_title: $("#s-title").value.trim() || "сер", user_name: $("#s-name").value.trim(), city: $("#s-city").value.trim() || "Київ",
-    wake_word_enabled: $("#s-wake").checked, speak_responses: $("#s-speak").checked, web_search: $("#s-web").checked,
+    wake_word_enabled: $("#s-wake").checked, listen_mode: $("#s-always").checked ? "always" : "wake", speak_responses: $("#s-speak").checked, web_search: $("#s-web").checked,
     morning_briefing: $("#s-brief").checked, proactive_alerts: $("#s-alerts").checked, welcome_back: $("#s-welcome").checked,
     sfx: $("#s-sfx").checked, voice_fx: $("#s-vfx").checked,
     autostart: $("#s-auto").checked, auto_update: $("#s-upd").checked, duck_music: $("#s-duck").checked, start_mini: $("#s-smini").checked, wake_engine: $("#s-engine").value, music_service: $("#s-music").value,
@@ -608,7 +611,7 @@ $("#s-save").onclick = async () => {
 
 /* ---------- ЗАВАНТАЖЕННЯ ---------- */
 const BOOT = [
-  "STARK INDUSTRIES // MARK OS v7.2",
+  "STARK INDUSTRIES // MARK OS v7.3",
   "Ініціалізація нейроядра ............ <b>OK</b>",
   "Підключення до Claude AI ........... <b>OK</b>",
   "Калібрування аудіосенсорів ......... <b>OK</b>",
@@ -794,7 +797,7 @@ const DEMO = {
       daily: [{ date: "2026-10-11", min: 7, max: 13, code: 2 }, { date: "2026-10-12", min: 6, max: 11, code: 61 }, { date: "2026-10-13", min: 5, max: 12, code: 3 },
               { date: "2026-10-14", min: 4, max: 14, code: 0 }, { date: "2026-10-15", min: 6, max: 13, code: 80 }] }); }, 700);
     setTimeout(() => { HUD.addMessage("jarvis", "Протокол «вечірка» активовано, сер. Сусіди, підозрюю, не в захваті."); HUD.setState("listening"); }, 1100);
-    }, 2600); return { version: "7.2.0-demo", settings: { sfx: false, voice_fx: true },
+    }, 2600); return { version: "7.3.0-demo", settings: { sfx: false, voice_fx: true },
       protocols: [{ name: "вечірка" }, { name: "тиша" }, { name: "робота" }, { name: "діагностика" }] }; },
   stats: () => ({ cpu: 20 + Math.random() * 25, cores: Array.from({ length: 16 }, () => Math.random() * 70), ram: 58, ram_used: 18.6, ram_total: 32,
     disk: 71, battery: null, down: Math.random() * 900, up: Math.random() * 200, procs: 287, uptime: 93210,
