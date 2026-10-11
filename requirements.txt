@@ -1,0 +1,15 @@
+anthropic>=0.69
+pywebview>=5.3
+edge-tts>=7.0
+SpeechRecognition>=3.10
+PyAudio>=0.2.14
+psutil>=6.0
+Pillow>=10.0
+requests>=2.31
+keyboard>=0.13.5
+icalendar>=6.0
+recurring-ical-events>=3.3
+tzdata
+numpy>=1.26
+onnxruntime>=1.18
+playwright>=1.48

@@ -1,0 +1,8 @@
+__pycache__/
+build/
+dist/
+*.spec
+.venv/
+test-*.xml
+.pytest_cache/
+assets/build_info.json

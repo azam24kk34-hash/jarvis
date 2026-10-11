@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>J.A.R.V.I.S.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="scanlines"></div>
+
+<!-- ЗАВАНТАЖЕННЯ -->
+<div id="boot">
+  <div class="boot-inner">
+    <div class="boot-logo">J.A.R.V.I.S.</div>
+    <div class="boot-bar"><i></i></div>
+    <pre id="boot-log"></pre>
+  </div>
+</div>
+
+<div id="app">
+  <!-- ВЕРХНЯ ПАНЕЛЬ -->
+  <header class="topbar pywebview-drag-region">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">J.A.R.V.I.S.</div>
+        <div class="brand-sub">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
+      </div>
+    </div>
+    <div class="top-center">
+      <span class="dot" id="status-dot"></span>
+      <span id="status-text">ІНІЦІАЛІЗАЦІЯ</span>
+    </div>
+    <div class="top-right">
+      <div class="clock"><div id="clock-time">00:00:00</div><div id="clock-date">—</div></div>
+      <div class="win-btns">
+        <button id="btn-mini" title="Міні-режим поверх вікон (або подвійний клік по реактору)">&#x25C9;</button>
+        <button onclick="api('win_minimize')" title="Згорнути">&#x2013;</button>
+        <button onclick="api('win_toggle_fullscreen')" title="На весь екран">&#x25A1;</button>
+        <button class="close" onclick="api('win_close')" title="Закрити">&#x2715;</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- ЛІВА ПАНЕЛЬ: ДІАГНОСТИКА -->
+    <section class="panel left">
+      <h2><span>01</span>SYSTEM DIAGNOSTICS</h2>
+      <div class="gauges">
+        <div class="gauge" id="g-cpu"><svg viewBox="0 0 120 120"><circle class="g-bg" cx="60" cy="60" r="50"/><circle class="g-fg" cx="60" cy="60" r="50"/><circle class="g-ticks" cx="60" cy="60" r="57"/></svg><div class="g-val">0<small>%</small></div><div class="g-lbl">ПРОЦЕСОР</div></div>
+        <div class="gauge" id="g-ram"><svg viewBox="0 0 120 120"><circle class="g-bg" cx="60" cy="60" r="50"/><circle class="g-fg" cx="60" cy="60" r="50"/><circle class="g-ticks" cx="60" cy="60" r="57"/></svg><div class="g-val">0<small>%</small></div><div class="g-lbl">ПАМ'ЯТЬ</div></div>
+        <div class="gauge" id="g-disk"><svg viewBox="0 0 120 120"><circle class="g-bg" cx="60" cy="60" r="50"/><circle class="g-fg" cx="60" cy="60" r="50"/><circle class="g-ticks" cx="60" cy="60" r="57"/></svg><div class="g-val">0<small>%</small></div><div class="g-lbl">ДИСК C:</div></div>
+        <div class="gauge" id="g-bat"><svg viewBox="0 0 120 120"><circle class="g-bg" cx="60" cy="60" r="50"/><circle class="g-fg" cx="60" cy="60" r="50"/><circle class="g-ticks" cx="60" cy="60" r="57"/></svg><div class="g-val">—</div><div class="g-lbl">ЖИВЛЕННЯ</div></div>
+      </div>
+
+      <h3>CPU CORES</h3>
+      <div id="cores" class="cores"></div>
+
+      <h3>NETWORK</h3>
+      <canvas id="net" height="70"></canvas>
+      <div class="kv"><span>&#x2193; ВХІД</span><b id="net-down">0 КБ/с</b></div>
+      <div class="kv"><span>&#x2191; ВИХІД</span><b id="net-up">0 КБ/с</b></div>
+
+      <h3>STATUS</h3>
+      <div class="kv"><span>ПАМ'ЯТЬ</span><b id="ram-abs">—</b></div>
+      <div class="kv"><span>ПРОЦЕСИ</span><b id="procs">—</b></div>
+      <div class="kv"><span>ЧАС РОБОТИ</span><b id="uptime">—</b></div>
+      <div class="kv"><span>API СЬОГОДНІ</span><b id="api-cost">—</b></div>
+      <div class="kv"><span>ВЕРСІЯ</span><b id="ver">—</b></div>
+    </section>
+
+    <!-- ЦЕНТР: РЕАКТОР -->
+    <section class="core">
+      <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+      <canvas id="reactor" title="Клік — перервати мовлення · Подвійний клік — міні-режим"></canvas>
+      <div id="holo"></div>
+      <div class="core-caption">
+        <div id="state-big">STANDBY</div>
+        <div id="state-hint">Скажіть «Джарвіс» або натисніть Ctrl+Alt+J</div>
+        <div id="heard"></div>
+      </div>
+      <div class="side-readout left-r">
+        <div>PWR <b id="r-pwr">100%</b></div><div>SYNC <b>OK</b></div><div>AI <b id="r-ai">—</b></div>
+      </div>
+      <div class="side-readout right-r">
+        <div>VOX <b id="r-vox">—</b></div><div>MIC <b id="r-mic">—</b></div><div>NET <b id="r-net">—</b></div>
+      </div>
+    </section>
+
+    <!-- ПРАВА ПАНЕЛЬ: ЖУРНАЛ -->
+    <section class="panel right">
+      <h2><span>02</span>COMMUNICATION LOG</h2>
+      <div id="log" class="log"></div>
+      <h3>PROTOCOLS</h3>
+      <div id="protocols" class="protocols"></div>
+      <h3>TIMERS</h3>
+      <div id="reminders" class="reminders"><div class="empty">Нагадувань немає</div></div>
+      <h3>SUBSYSTEMS</h3>
+      <div id="tools" class="tools"></div>
+    </section>
+  </main>
+
+  <!-- НИЖНЯ ПАНЕЛЬ: ВВЕДЕННЯ -->
+  <footer class="inputbar">
+    <button id="btn-mic" class="icon-btn" title="Говорити (Ctrl+Alt+J)">
+      <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2z"/></svg>
+    </button>
+    <div class="input-wrap">
+      <span class="prompt">&gt;</span>
+      <input id="cmd" type="text" placeholder="Введіть команду, сер…" autocomplete="off">
+    </div>
+    <button id="btn-send" class="text-btn">ВИКОНАТИ</button>
+    <button id="btn-mute" class="icon-btn" title="Вимкнути мікрофон">
+      <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
+    </button>
+    <button id="btn-settings" class="icon-btn" title="Налаштування">
+      <svg viewBox="0 0 24 24"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3h-4l-.4 2.9a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1L11 21h4l.4-2.9c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5L19.4 13zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>
+    </button>
+  </footer>
+</div>
+
+<!-- НАЛАШТУВАННЯ -->
+<div id="settings" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-scroll">
+    <h2><span>SYS</span>НАЛАШТУВАННЯ</h2>
+    <label>Ключ Anthropic API
+      <input id="s-key" type="password" placeholder="sk-ant-…">
+      <small>Отримати: console.anthropic.com → API Keys. Зберігається лише на вашому ПК.</small>
+    </label>
+    <div class="row">
+      <label>Модель
+        <select id="s-model">
+          <option value="claude-sonnet-5-5">Claude Sonnet 5.5 — швидка (рекомендовано)</option>
+          <option value="claude-opus-5-5">Claude Opus 5.5 — найрозумніша</option>
+          <option value="claude-haiku-5-5">Claude Haiku 5.5 — найдешевша</option>
+        </select>
+      </label>
+      <label>Голос
+        <select id="s-voice">
+          <option value="uk-UA-OstapNeural">Остап (чоловічий)</option>
+          <option value="uk-UA-PolinaNeural">Поліна (жіночий)</option>
+        </select>
+      </label>
+    </div>
+    <div class="row">
+      <label>Звертання<input id="s-title" type="text" placeholder="сер"></label>
+      <label>Ваше ім'я<input id="s-name" type="text" placeholder="необов'язково"></label>
+      <label>Місто<input id="s-city" type="text" placeholder="Київ"></label>
+      <label>Бюджет API, $/день<input id="s-budget" type="text" inputmode="decimal" placeholder="1.00"></label>
+    </div>
+    <label>Як мене кликати
+      <select id="s-engine">
+        <option value="google">«Джарвіс» — розпізнавання онлайн (Google чує фрази в кімнаті)</option>
+        <option value="offline">«Hey Jarvis» — офлайн на ПК, до команди звук нікуди не йде (приватно)</option>
+      </select>
+    </label>
+    <div class="row">
+      <label>Музика
+        <select id="s-music">
+          <option value="ytmusic">YouTube Music (ваш акаунт)</option>
+          <option value="youtube">YouTube</option>
+        </select>
+      </label>
+      <label>&nbsp;
+        <button type="button" class="text-btn ghost" id="s-ytm" style="width:100%;margin-top:6px">УВІЙТИ В YOUTUBE MUSIC</button>
+      </label>
+    </div>
+    <div class="toggles">
+      <label class="tg"><input id="s-wake" type="checkbox"><i></i>Слухати «Джарвіс» постійно</label>
+      <label class="tg"><input id="s-speak" type="checkbox"><i></i>Озвучувати відповіді</label>
+      <label class="tg"><input id="s-web" type="checkbox"><i></i>Пошук в інтернеті (новини, курси)</label>
+      <label class="tg"><input id="s-brief" type="checkbox"><i></i>Ранковий брифінг при першому запуску за день</label>
+      <label class="tg"><input id="s-alerts" type="checkbox"><i></i>Проактивні попередження (батарея, пам'ять, мережа)</label>
+      <label class="tg"><input id="s-welcome" type="checkbox"><i></i>«З поверненням, сер» після відсутності</label>
+      <label class="tg"><input id="s-sfx" type="checkbox"><i></i>Звукові ефекти інтерфейсу</label>
+      <label class="tg"><input id="s-vfx" type="checkbox"><i></i>Кінематографічна обробка голосу</label>
+      <label class="tg"><input id="s-duck" type="checkbox"><i></i>Приглушувати музику, коли я говорю з Джарвісом</label>
+      <label class="tg"><input id="s-auto" type="checkbox"><i></i>Запускати разом з Windows</label>
+      <label class="tg"><input id="s-smini" type="checkbox"><i></i>Під час автозапуску — одразу міні-режим</label>
+    </div>
+    <label>Календар (секретна адреса iCal)
+      <input id="s-ics" type="password" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics">
+      <small>Google Календар → ⚙ Налаштування → ваш календар → «Секретна адреса у форматі iCal». Кілька адрес — через пробіл.</small>
+    </label>
+    <label>Що Джарвіс про вас пам'ятає
+      <div id="s-memory" class="mem-list"></div>
+      <small>Скажіть «Джарвіс, запам'ятай, що…» — і факт з'явиться тут. Клік по ✕ — забути.</small>
+    </label>
+    <div class="modal-actions">
+      <button class="text-btn ghost" id="s-reset">ОЧИСТИТИ РОЗМОВУ</button>
+      <button class="text-btn ghost" id="s-log">ЖУРНАЛ ПОМИЛОК</button>
+      <span style="flex:1"></span>
+      <button class="text-btn ghost" id="s-cancel">СКАСУВАТИ</button>
+      <button class="text-btn" id="s-save">ЗБЕРЕГТИ</button>
+    </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<script src="app.js"></script>
+</body>
+</html>
