@@ -16,7 +16,7 @@ from .config import app_dir
 IS_WIN = platform.system() == "Windows"
 
 if IS_WIN:
-    _u = ctypes.windll.user32
+    _u = ctypes.WinDLL("user32")  # окремий екземпляр: власні argtypes не впливають на pywebview
 
     class RECT(ctypes.Structure):
         _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long), ("right", ctypes.c_long), ("bottom", ctypes.c_long)]

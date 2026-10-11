@@ -962,7 +962,7 @@ class Toolbox:
     def t_window_control(self, action, title=None):
         if not IS_WIN:
             return "Доступно лише на Windows"
-        u = ctypes.windll.user32
+        u = _u
         if action == "list":
             return "\n".join(t for _, t in _windows()) or "Відкритих вікон немає"
         if action == "focus":
@@ -1012,7 +1012,7 @@ JARVIS_TITLE = "J.A.R.V.I.S."
 
 if IS_WIN:  # явні типи, щоб 64-бітні дескриптори вікон не обрізались
     from ctypes import wintypes as _wt
-    _u = ctypes.windll.user32
+    _u = ctypes.WinDLL("user32")  # окремий екземпляр: argtypes тут не ламають виклики pywebview
     _u.GetForegroundWindow.restype = _wt.HWND
     _u.GetWindow.argtypes, _u.GetWindow.restype = [_wt.HWND, ctypes.c_uint], _wt.HWND
     _u.IsWindowVisible.argtypes = [_wt.HWND]
@@ -1038,7 +1038,7 @@ def _cloaked(h):
 
 def _focus(h):
     """Вивести вікно наперед. Windows не дає фоновій програмі красти фокус — обходимо натисканням Alt."""
-    u = ctypes.windll.user32
+    u = _u
     if u.IsIconic(h):
         u.ShowWindow(h, 9)  # SW_RESTORE лише для згорнутих — розгорнуті не зменшуємо
     if u.SetForegroundWindow(h):
@@ -1057,7 +1057,7 @@ def _windows():
     """Видимі вікна з заголовками (без самого Джарвіса), у порядку від верхнього."""
     if not IS_WIN:
         return []
-    u = ctypes.windll.user32
+    u = _u
     res = []
 
     @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
@@ -1082,7 +1082,7 @@ def _target_window():
     """Вікно, з яким працюємо: активне, а якщо активний сам Джарвіс — наступне під ним."""
     if not IS_WIN:
         return None, ""
-    u = ctypes.windll.user32
+    u = _u
     fg = u.GetForegroundWindow()
     n = u.GetWindowTextLengthW(fg)
     buf = ctypes.create_unicode_buffer(n + 1)

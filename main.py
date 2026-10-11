@@ -66,6 +66,7 @@ class Jarvis:
                            on_stop=lambda: self.js("HUD.stopAudio"),
                            on_notice=lambda t: self._alert(t, "info"))
         self.voice.music_playing = lambda: self.browser.music_playing
+        self.voice.on_ignored = lambda t: self.js("HUD.heard", t, True)
         self.monitor = Monitor(self.config, on_alert=self._alert, on_welcome=self._welcome)
         self._started = False
         threading.Thread(target=self._worker, daemon=True, name="brain").start()
@@ -85,6 +86,10 @@ class Jarvis:
 
     def self_test(self):
         """Перевірка систем при старті — як у фільмі, з доповіддю в HUD."""
+        for _ in range(16):  # мікрофон відкривається й калібрується ~1–3 с після старту
+            if self.voice.mic_ok:
+                break
+            time.sleep(0.5)
         res = {"mic": self.voice.mic_ok}
         ok, info = self.brain.self_test()
         res["ai"], res["ai_info"] = ok, info

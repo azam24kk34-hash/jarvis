@@ -350,3 +350,4 @@ body.mini .toast { top: 44px; width: 88%; padding: 10px 12px; font-size: 12.5px;
 .cal em { color: var(--muted); font-style: normal; font-size: 11px; }
 .side-readout b.bad { color: var(--red); text-shadow: 0 0 8px var(--red); }
 .msg.streaming .body::after { content: "▍"; color: var(--cyan); animation: pulse .8s infinite; margin-left: 2px; }
+#heard.ignored { color: var(--muted); font-size: 14px; }

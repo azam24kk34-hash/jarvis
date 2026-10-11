@@ -14,6 +14,9 @@ import numpy as np
 WAKE_REPLIES = ["Так, сер?", "Слухаю, сер.", "До ваших послуг.", "Для вас, сер, — завжди.", "Я тут, сер.", "Слухаю уважно."]
 
 FOLLOW_UP_SECONDS = 12  # скільки секунд після відповіді можна говорити без «Джарвіс»
+# як Google іноді «чує» ім'я — теж вважаємо зверненням
+EXTRA_WAKES = ["джарвіс", "джарвис", "джарвіса", "джарвісе", "джервіс", "джерві", "жарвіс", "чарвіс", "джавіс", "джаріс",
+               "гарвіс", "джарвез", "джарвес", "jarvis", "jarvys", "javis", "джарвиз", "джарвізе", "харвіс"]
 SLEEP_RE = re.compile(r"\b(спи|засни|не слухай|режим сну|відпочинь|помовч|тихий режим)\b")
 WAKE_RE = re.compile(r"\b(прокинься|прокидайся|слухай мене|я тут|режим розмови)\b")
 AWAKE_SECONDS = 8      # скільки чекати команду після одного лише «Джарвіс»
@@ -33,6 +36,7 @@ class Voice:
         self.on_heard = on_heard or (lambda t: None)
         self.on_stop = on_stop or (lambda: None)
         self.on_notice = on_notice or (lambda t: None)
+        self.on_ignored = lambda t: None       # показати в HUD, що почуто, але без «Джарвіс»
         self.sleeping = False                 # «Джарвіс, спи» — слухає лише своє ім'я
         self.music_playing = lambda: False    # під час музики завжди потрібне «Джарвіс» (щоб не реагувати на пісні)
         self.level = 0.0
@@ -123,12 +127,14 @@ class Voice:
     def _strip_wake(self, text):
         """Повертає (чи є wake word, решта фрази)."""
         words = re.findall(r"[\w'’-]+", text.lower())
-        wakes = [w.lower() for w in self.config.get("wake_words")]
+        wakes = [w.lower() for w in self.config.get("wake_words")] + EXTRA_WAKES
         for i, w in enumerate(words):
-            if w in wakes or any(w.startswith(k) for k in wakes if len(k) > 4) \
-                    or difflib.get_close_matches(w, wakes, n=1, cutoff=0.78):
-                rest = " ".join(words[:i] + words[i + 1:]).strip(" ,.!?")
-                return True, rest
+            pair = w + (words[i + 1] if i + 1 < len(words) else "")  # «джар віс» → «джарвіс»
+            for cand, used in ((w, 1), (pair, 2)):
+                if cand in wakes or any(cand.startswith(k) for k in wakes if len(k) > 4) \
+                        or (len(cand) >= 5 and difflib.get_close_matches(cand, wakes, n=1, cutoff=0.72)):
+                    rest = " ".join(words[:i] + words[i + used:]).strip(" ,.!?")
+                    return True, rest
         return False, text
 
     # ------------------------------------------------------------ рівень мікрофона
@@ -156,6 +162,9 @@ class Voice:
             mic = sr.Microphone(sample_rate=16000)
             with mic as source:
                 r.adjust_for_ambient_noise(source, duration=1.0)
+            # якщо під час калібрування грала музика чи був шум — поріг злітає й голос «не чути»
+            r.energy_threshold = max(150, min(r.energy_threshold, 1500))
+            print(f"Мікрофон відкрито, поріг гучності {r.energy_threshold:.0f}")
             if self.config.get("mic_energy_threshold"):
                 r.energy_threshold = int(self.config.get("mic_energy_threshold"))
                 r.dynamic_energy_threshold = False
@@ -219,7 +228,12 @@ class Voice:
                 if awake:
                     self.on_state("recognizing")
                 try:
-                    text = r.recognize_google(audio, language="uk-UA")
+                    res = r.recognize_google(audio, language="uk-UA", show_all=True)
+                    alts = [a.get("transcript", "") for a in (res or {}).get("alternative", [])] if isinstance(res, dict) else []
+                    if not alts:
+                        raise sr.UnknownValueError()
+                    # «Джарвіс» шукаємо в усіх варіантах розпізнавання, а не лише в першому
+                    text = next((a for a in alts if self._strip_wake(a)[0]), alts[0])
                 except sr.UnknownValueError:
                     if awake:
                         self.on_state("awake" if self._force_command else "listening")
@@ -248,6 +262,10 @@ class Voice:
                         continue
                     if not has_wake:
                         continue
+                if not (has_wake or awake or self._force_command or self.always_active()):
+                    print(f"Почуто без «Джарвіс»: {text[:60]}")
+                    self.on_ignored(text)
+                    continue
                 if self._force_command or awake:
                     self._force_command = False
                     self._awake_until = 0
