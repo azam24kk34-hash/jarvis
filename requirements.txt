@@ -13,3 +13,4 @@ tzdata
 numpy>=1.26
 onnxruntime>=1.18
 playwright>=1.48
+openai>=1.40

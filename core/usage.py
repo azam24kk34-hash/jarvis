@@ -58,6 +58,19 @@ class Usage:
         self._check_budget(today, total)
         return cost
 
+    def add_free(self, u=None):
+        """Безкоштовні провайдери (Gemini free, Groq, Ollama): рахуємо запити, вартість 0."""
+        today = dt.date.today().isoformat()
+        with self._lock:
+            d = self.days.setdefault(today, {"cost": 0.0, "in": 0, "out": 0, "cached": 0, "requests": 0, "searches": 0})
+            d["requests"] += 1
+            d["in"] += _g(u, "prompt_tokens")
+            d["out"] += _g(u, "completion_tokens")
+            try:
+                self._file.write_text(json.dumps(self.days, indent=1), encoding="utf-8")
+            except Exception:
+                pass
+
     def set_budget_getter(self, fn):
         self._budget = fn
 

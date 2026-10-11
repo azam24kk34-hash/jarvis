@@ -143,3 +143,52 @@ def test_updater_check(monkeypatch):
     assert updater.check("9.1.0") == (None, None)
     monkeypatch.setattr(updater, "build_info", lambda: {})
     assert updater.check("1.0.0") == (None, None)
+
+
+def test_openai_compatible_brain_tools_and_stream(config, toolbox):
+    """Безкоштовний провайдер (Gemini/Groq/Ollama) через OpenAI-сумісний API: стрімінг + виклик інструмента."""
+    import types as T
+    import openai
+    from core.brain import make_brain
+    from core.brain_oai import OpenAIBrain
+
+    def chunk(content=None, tool=None):
+        delta = T.SimpleNamespace(content=content, tool_calls=[tool] if tool else None)
+        return T.SimpleNamespace(choices=[T.SimpleNamespace(delta=delta)], usage=None)
+
+    calls = {"n": 0, "msgs": []}
+
+    def create(**kw):
+        calls["n"] += 1
+        calls["msgs"].append(kw["messages"])
+        assert kw["tools"][0]["type"] == "function" and kw["stream"]
+        if calls["n"] == 1:
+            fn = T.SimpleNamespace(name="list_protocols", arguments="{}")
+            return [chunk("Хвилинку. "), chunk(tool=T.SimpleNamespace(index=0, id="c1", function=fn))]
+        return [chunk("Протоколи: "), chunk("вечірка, тиша.")]
+
+    class FakeClient:
+        def __init__(self, **k):
+            self.chat = T.SimpleNamespace(completions=T.SimpleNamespace(create=create))
+
+    openai.OpenAI = FakeClient
+    config.data.update(provider="gemini", gemini_key="AIza-test")
+    br = make_brain(config, toolbox)
+    assert isinstance(br, OpenAIBrain) and br.ready()
+    got = []
+    ans = br.ask("які протоколи?", on_text=got.append)
+    assert "вечірка" in ans and "Хвилинку. " in got
+    roles = [m["role"] for m in br.history]
+    assert roles == ["user", "assistant", "tool", "assistant"]
+    assert calls["msgs"][1][0]["role"] == "system"
+    config.data.update(provider="ollama")
+    assert make_brain(config, toolbox).ready()  # Ollama — без ключа
+
+
+def test_web_search_parsing(toolbox, monkeypatch):
+    from core import tools as T
+    html = ('<a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Fa&rut=x">Курс <b>долара</b></a>'
+            '<a class="result__snippet" href="x">Сьогодні 41,2 грн</a>')
+    monkeypatch.setattr(T.requests, "post", lambda *a, **k: type("R", (), {"text": html})())
+    r = toolbox.run("web_search", {"query": "курс долара"})
+    assert "Курс долара" in r and "https://example.com/a" in r and "41,2" in r

@@ -74,6 +74,9 @@ class Brain:
         with self._lock:
             self.history = []
 
+    def ready(self):
+        return bool(self.config.get("api_key"))
+
     def _client(self):
         key = self.config.get("api_key")
         if not key:
@@ -224,3 +227,11 @@ class Brain:
             return False, "немає доступу до моделі"
         except Exception as e:
             return False, f"немає зв'язку ({type(e).__name__})"
+
+
+def make_brain(config, toolbox, on_status=None, usage=None):
+    """Claude (платно) або безкоштовні Gemini / Groq / локальна Ollama — за налаштуванням provider."""
+    if (config.get("provider") or "anthropic") == "anthropic":
+        return Brain(config, toolbox, on_status=on_status, usage=usage)
+    from .brain_oai import OpenAIBrain
+    return OpenAIBrain(config, toolbox, on_status=on_status, usage=usage)

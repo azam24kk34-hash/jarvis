@@ -9,6 +9,12 @@ APP_NAME = "Jarvis"
 
 DEFAULTS = {
     "api_key": "",
+    "provider": "gemini",            # "gemini" / "groq" / "ollama" — безкоштовно; "anthropic" — Claude (платно)
+    "gemini_key": "",
+    "groq_key": "",
+    "gemini_model": "",              # порожньо = модель за замовчуванням
+    "groq_model": "",
+    "ollama_model": "",
     "model": "claude-sonnet-5-5",
     "user_title": "сер",            # як Jarvis звертається до вас
     "user_name": "",                 # ваше ім'я (необов'язково)
@@ -83,7 +89,8 @@ class Config:
 
     def public(self) -> dict:
         d = dict(self.data)
-        key = d.get("api_key", "")
-        d["api_key_set"] = bool(key)
-        d["api_key"] = (key[:10] + "…" + key[-4:]) if len(key) > 16 else ""
+        for k in ("api_key", "gemini_key", "groq_key"):
+            key = d.get(k, "") or ""
+            d[k + "_set"] = bool(key)
+            d[k] = (key[:6] + "…" + key[-4:]) if len(key) > 12 else ""
         return d

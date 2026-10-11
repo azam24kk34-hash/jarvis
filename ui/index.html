@@ -128,17 +128,22 @@
   <div class="modal-box">
     <div class="modal-scroll">
     <h2><span>SYS</span>НАЛАШТУВАННЯ</h2>
-    <label>Ключ Anthropic API
-      <input id="s-key" type="password" placeholder="sk-ant-…">
-      <small>Отримати: console.anthropic.com → API Keys. Зберігається лише на вашому ПК.</small>
+    <label>Мозок Джарвіса
+      <select id="s-provider">
+        <option value="gemini">Google Gemini — безкоштовно (рекомендовано)</option>
+        <option value="groq">Groq — безкоштовно, дуже швидко</option>
+        <option value="ollama">Ollama — локально на ПК, без інтернету й без ключа</option>
+        <option value="anthropic">Claude (Anthropic) — платно, найрозумніший</option>
+      </select>
+    </label>
+    <label id="s-key-label"><span id="s-key-title">Ключ</span>
+      <input id="s-key" type="password" placeholder="">
+      <small id="s-key-hint"></small>
     </label>
     <div class="row">
       <label>Модель
-        <select id="s-model">
-          <option value="claude-sonnet-5-5">Claude Sonnet 5.5 — швидка (рекомендовано)</option>
-          <option value="claude-opus-5-5">Claude Opus 5.5 — найрозумніша</option>
-          <option value="claude-haiku-5-5">Claude Haiku 5.5 — найдешевша</option>
-        </select>
+        <input id="s-model" type="text" list="s-models" placeholder="">
+        <datalist id="s-models"></datalist>
       </label>
       <label>Голос
         <select id="s-voice">

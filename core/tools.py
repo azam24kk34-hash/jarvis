@@ -601,6 +601,35 @@ class Toolbox:
         except LookupError as e:
             return f"Не знайшов такого плейлиста. {e}"
 
+    # ---------- безкоштовний пошук в інтернеті (для Gemini/Groq/Ollama)
+    def t_web_search(self, query):
+        import html as _html
+        results = []
+        try:
+            r = requests.post("https://html.duckduckgo.com/html/", data={"q": query, "kl": "ua-uk"}, timeout=10,
+                              headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126 Safari/537.36"})
+            for m in re.finditer(r'class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>.*?class="result__snippet"[^>]*>(.*?)</a>',
+                                 r.text, re.S):
+                url = urllib.parse.unquote(re.sub(r"^.*?uddg=([^&]+).*$", r"\1", m.group(1)))
+                clean = lambda x: _html.unescape(re.sub(r"<[^>]+>", "", x)).strip()
+                results.append(f"• {clean(m.group(2))} — {clean(m.group(3))} ({url})")
+                if len(results) >= 6:
+                    break
+        except Exception as e:
+            print("DDG error:", repr(e))
+        if not results:  # запасний варіант — Google News RSS (добре для «новин»)
+            try:
+                r = requests.get("https://news.google.com/rss/search", timeout=10,
+                                 params={"q": query, "hl": "uk", "gl": "UA", "ceid": "UA:uk"})
+                for m in re.finditer(r"<item>.*?<title>(.*?)</title>.*?<pubDate>(.*?)</pubDate>", r.text, re.S):
+                    results.append(f"• {_html.unescape(m.group(1))} ({m.group(2)[:16]})")
+                    if len(results) >= 8:
+                        break
+            except Exception as e:
+                print("News RSS error:", repr(e))
+        self.card("intel", {"query": query})
+        return "\n".join(results) if results else "Пошук нічого не дав. Можна відкрити сайт через browser_open."
+
     # ---------- самооновлення
     def t_update_self(self):
         from . import updater

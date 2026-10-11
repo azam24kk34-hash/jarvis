@@ -12,7 +12,7 @@ import time
 import psutil
 import webview
 
-from core.brain import Brain
+from core.brain import make_brain
 import sys
 
 from core import autostart, log
@@ -57,7 +57,7 @@ class Jarvis:
         self.quick = QuickCommands(self.config, self.toolbox, self.protocols)
         self._ducked = False
         self._pending_restore = 0.0
-        self.brain = Brain(self.config, self.toolbox, on_status=self._brain_status, usage=self.usage)
+        self.brain = make_brain(self.config, self.toolbox, on_status=self._brain_status, usage=self.usage)
         self.voice = Voice(self.config, on_command=self.submit, on_state=self._voice_state,
                            play_audio=self._play_audio, on_heard=lambda t: self.js("HUD.heard", t),
                            on_stop=lambda: self.js("HUD.stopAudio"),
@@ -94,7 +94,7 @@ class Jarvis:
         res["net"] = online()
         print("Self-test:", res)
         self.js("HUD.systems", res)
-        if self.config.get("api_key") and not ok:
+        if self.brain.ready() and not ok:
             self._alert(f"Сер, мозок недоступний: {info}. Перевірте налаштування.", "warn")
         return res
 
@@ -206,7 +206,7 @@ class Jarvis:
                 self.brain.ask(text, on_text=speech.feed)
             except RuntimeError as e:
                 if str(e) == "NO_KEY":
-                    speech.feed(" Сер, мені потрібен ключ Anthropic API. Відкриваю налаштування.")
+                    speech.feed(" Сер, мені потрібен ключ — безкоштовний ключ Gemini підійде. Відкриваю налаштування.")
                     self.js("HUD.openSettings")
                 else:
                     speech.feed(f" Виникла помилка: {e}.")
@@ -227,6 +227,8 @@ class Jarvis:
         if name in ("APIConnectionError", "APITimeoutError"):
             return "Немає з'єднання з сервером, сер. Перевірте інтернет."
         if name == "RateLimitError":
+            if self.config.get("provider") != "anthropic":
+                return "Безкоштовний ліміт запитів поки вичерпано, сер. Спробуймо за хвилину, а якщо не допоможе — завтра."
             return "Перевищено ліміт запитів, сер. Спробуймо за хвилину."
         if name in ("InternalServerError", "OverloadedError", "ServiceUnavailableError"):
             return "Сервери Anthropic зараз перевантажені, сер. Повторіть, будь ласка, за мить."
@@ -293,9 +295,9 @@ class Jarvis:
         part = "Доброго ранку" if 5 <= h < 12 else "Доброго дня" if h < 18 else "Доброго вечора" if h < 23 else "Доброї ночі"
         title = self.config.get("user_title")
         today = dt.date.today().isoformat()
-        if not self.config.get("api_key"):
-            text = (f"{part}, {title}. Я Джарвіс — ваш персональний асистент. "
-                    f"Щоб я міг працювати на повну, введіть ключ API в налаштуваннях.")
+        if not self.brain.ready():
+            text = (f"{part}, {title}. Я Джарвіс — ваш персональний асистент. Прості команди вже працюють. "
+                    f"Щоб я міг розмовляти, введіть безкоштовний ключ Gemini в налаштуваннях.")
             self.js("HUD.openSettings")
         elif self.config.get("morning_briefing") and 5 <= h < 12 and self.config.get("last_briefing") != today:
             self.config.update({"last_briefing": today})
@@ -313,7 +315,7 @@ class Jarvis:
                 f"{part}, {title}. Системи онлайн, я до ваших послуг.",
                 f"{part}, {title}. Радий бачити вас знову. Над чим працюємо сьогодні?",
             ])
-        names = self._restore_candidates() if self.config.get("api_key") else []
+        names = self._restore_candidates() if self.brain.ready() else []
         if names:
             text += f" Минулого разу були відкриті {self._join(names)}. Відкрити їх знову?"
             self._pending_restore = time.time() + 120
@@ -455,9 +457,15 @@ class Api:
 
     def save_settings(self, values):
         values = dict(values or {})
-        if not values.get("api_key") or "…" in values.get("api_key", ""):
-            values.pop("api_key", None)  # не перезаписуємо прихований ключ
+        for k in ("api_key", "gemini_key", "groq_key"):
+            if k in values and (not values[k] or "…" in values[k]):
+                values.pop(k)  # не перезаписуємо збережений ключ порожнім/прихованим
+        old = (self._j.config.get("provider"), self._j.config.get("model"))
         self._j.config.update(values)
+        j = self._j
+        if (j.config.get("provider"), j.config.get("model")) != old or any(k.endswith(("_key", "_model")) for k in values):
+            j.brain = make_brain(j.config, j.toolbox, on_status=j._brain_status, usage=j.usage)
+            threading.Thread(target=j.self_test, daemon=True).start()
         if "autostart" in values:
             try:
                 autostart.set_enabled(bool(values["autostart"]))

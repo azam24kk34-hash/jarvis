@@ -524,13 +524,43 @@ $("#btn-mute").onclick = async () => {
 document.addEventListener("click", () => { ensureAudio(); if (audioCtx.state === "suspended") audioCtx.resume(); }, { once: true });
 
 /* ---------- НАЛАШТУВАННЯ ---------- */
+const PROVIDERS = {
+  gemini: { key: "gemini_key", model: "gemini_model", def: "gemini-3.8-flash", ph: "AIza…",
+    models: ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"],
+    hint: "Безкоштовно: aistudio.google.com/apikey → «Create API key» (потрібен лише Google-акаунт, без картки). Увага: на безкоштовному тарифі Google може використовувати запити для навчання моделей — не обговорюйте з Джарвісом службове й чутливе." },
+  groq: { key: "groq_key", model: "groq_model", def: "openai/gpt-oss-120b", ph: "gsk_…",
+    models: ["openai/gpt-oss-120b", "llama-3.3-70b-versatile", "openai/gpt-oss-20b"],
+    hint: "Безкоштовно: console.groq.com/keys → «Create API Key». Є добові ліміти запитів." },
+  ollama: { key: null, model: "ollama_model", def: "qwen2.5:7b",
+    models: ["qwen2.5:7b", "qwen2.5:14b", "llama3.1:8b"],
+    hint: "Повністю офлайн і приватно. Встановіть Ollama з ollama.com, потім у терміналі: ollama pull qwen2.5:7b. Потрібна відеокарта з 8+ ГБ пам'яті, і українською відповідає слабше." },
+  anthropic: { key: "api_key", model: "model", def: "claude-sonnet-5-5", ph: "sk-ant-…",
+    models: ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"],
+    hint: "Платно, ≈1–3 центи за відповідь: console.anthropic.com → API Keys (підписка claude.ai сюди не входить)." },
+};
+let SETTINGS_RAW = {};
+function renderProvider() {
+  const p = PROVIDERS[$("#s-provider").value], s = SETTINGS_RAW;
+  $("#s-key-label").style.display = p.key ? "" : "none";
+  $("#s-key-title").textContent = { gemini_key: "Ключ Google Gemini", groq_key: "Ключ Groq", api_key: "Ключ Anthropic API" }[p.key] || "";
+  $("#s-key").value = "";
+  $("#s-key").placeholder = p.key && s[p.key + "_set"] ? `Збережено: ${s[p.key]}` : (p.ph || "");
+  $("#s-key-hint").textContent = p.hint;
+  $("#s-models").innerHTML = p.models.map((m) => `<option value="${m}">`).join("");
+  $("#s-model").value = s[p.model] || (p.model === "model" ? s.model : "") || p.def;
+}
+function providerValues() {
+  const p = PROVIDERS[$("#s-provider").value], out = {};
+  if (p.key && $("#s-key").value.trim()) out[p.key] = $("#s-key").value.trim();
+  out[p.model] = $("#s-model").value.trim() || p.def;
+  return out;
+}
+$("#s-provider").addEventListener("change", renderProvider);
 async function openSettings() {
   const s = await api("get_settings") || {};
-  $("#s-key").value = "";
-  $("#s-key").placeholder = s.api_key_set ? `Збережено: ${s.api_key}` : "sk-ant-…";
-  const m = $("#s-model");
-  if (s.model && ![...m.options].some((o) => o.value === s.model)) m.add(new Option(s.model, s.model));
-  m.value = s.model || "claude-sonnet-5-5";
+  SETTINGS_RAW = s;
+  $("#s-provider").value = s.provider || "gemini";
+  renderProvider();
   $("#s-voice").value = s.voice || "uk-UA-OstapNeural";
   $("#s-title").value = s.user_title || "";
   $("#s-name").value = s.user_name || "";
@@ -561,7 +591,7 @@ $("#s-cancel").onclick = () => $("#settings").classList.add("hidden");
 $("#s-reset").onclick = async () => { await api("reset_memory"); HUD.addMessage("jarvis", "Пам'ять розмови очищено, сер."); };
 $("#s-save").onclick = async () => {
   await api("save_settings", {
-    api_key: $("#s-key").value.trim(), model: $("#s-model").value, voice: $("#s-voice").value,
+    provider: $("#s-provider").value, ...providerValues(), voice: $("#s-voice").value,
     user_title: $("#s-title").value.trim() || "сер", user_name: $("#s-name").value.trim(), city: $("#s-city").value.trim() || "Київ",
     wake_word_enabled: $("#s-wake").checked, speak_responses: $("#s-speak").checked, web_search: $("#s-web").checked,
     morning_briefing: $("#s-brief").checked, proactive_alerts: $("#s-alerts").checked, welcome_back: $("#s-welcome").checked,
@@ -577,7 +607,7 @@ $("#s-save").onclick = async () => {
 
 /* ---------- ЗАВАНТАЖЕННЯ ---------- */
 const BOOT = [
-  "STARK INDUSTRIES // MARK OS v7.0",
+  "STARK INDUSTRIES // MARK OS v7.1",
   "Ініціалізація нейроядра ............ <b>OK</b>",
   "Підключення до Claude AI ........... <b>OK</b>",
   "Калібрування аудіосенсорів ......... <b>OK</b>",
@@ -763,13 +793,13 @@ const DEMO = {
       daily: [{ date: "2026-10-11", min: 7, max: 13, code: 2 }, { date: "2026-10-12", min: 6, max: 11, code: 61 }, { date: "2026-10-13", min: 5, max: 12, code: 3 },
               { date: "2026-10-14", min: 4, max: 14, code: 0 }, { date: "2026-10-15", min: 6, max: 13, code: 80 }] }); }, 700);
     setTimeout(() => { HUD.addMessage("jarvis", "Протокол «вечірка» активовано, сер. Сусіди, підозрюю, не в захваті."); HUD.setState("listening"); }, 1100);
-    }, 2600); return { version: "7.0.0-demo", settings: { sfx: false, voice_fx: true },
+    }, 2600); return { version: "7.1.0-demo", settings: { sfx: false, voice_fx: true },
       protocols: [{ name: "вечірка" }, { name: "тиша" }, { name: "робота" }, { name: "діагностика" }] }; },
   stats: () => ({ cpu: 20 + Math.random() * 25, cores: Array.from({ length: 16 }, () => Math.random() * 70), ram: 58, ram_used: 18.6, ram_total: 32,
     disk: 71, battery: null, down: Math.random() * 900, up: Math.random() * 200, procs: 287, uptime: 93210,
     usage: { cost: 0.0421, requests: 14, month: 1.37, cached_pct: 81 },
     reminders: [{ when: "2026-10-11T18:30:00", text: "Зателефонувати татові" }] }),
-  get_settings: () => ({ model: "claude-sonnet-5-5", user_title: "сер", city: "Київ", wake_word_enabled: true, speak_responses: true, web_search: true,
+  get_settings: () => ({ provider: "gemini", model: "claude-sonnet-5-5", user_title: "сер", city: "Київ", wake_word_enabled: true, speak_responses: true, web_search: true,
     morning_briefing: true, proactive_alerts: true, welcome_back: true, sfx: true, voice_fx: true, start_mini: true,
     calendar_ics: "x", memory: [{ text: "П'є каву без цукру" }, { text: "Тата звати Олег" }] }),
   toggle_mute: () => (muted = !muted),
