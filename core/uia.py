@@ -12,21 +12,28 @@ def _root(hwnd):
     return auto.ControlFromHandle(hwnd)
 
 
-def _walk(ctrl, depth=0, max_depth=14, limit=400, out=None):
+def _walk(ctrl, depth=0, max_depth=12, limit=400, out=None, budget=None):
+    """Обхід дерева елементів з обмеженнями: не більше 2500 вузлів і 4 секунд —
+    у великих програмах (браузери, IDE) повний обхід може вантажити процесор хвилинами."""
+    import time
     out = [] if out is None else out
-    if depth > max_depth or len(out) >= limit:
+    budget = budget if budget is not None else {"nodes": 2500, "until": time.time() + 4}
+    if depth > max_depth or len(out) >= limit or budget["nodes"] <= 0 or time.time() > budget["until"]:
         return out
     try:
         children = ctrl.GetChildren()
     except Exception:
         return out
     for ch in children:
+        budget["nodes"] -= 1
+        if budget["nodes"] <= 0:
+            break
         try:
             if ch.ControlTypeName in CLICKABLE and (ch.Name or "").strip() and not ch.IsOffscreen:
                 out.append(ch)
         except Exception:
             pass
-        _walk(ch, depth + 1, max_depth, limit, out)
+        _walk(ch, depth + 1, max_depth, limit, out, budget)
     return out
 
 

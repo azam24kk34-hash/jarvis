@@ -43,7 +43,9 @@ let micLevel = 0;
 let replyEl = null, replyTarget = null, replyQueue = "", replyTimer = null;
 let audioCtx, analyser, freq, fxIn, dryIn, currentSrc;
 
+let throttleUntil = 0;
 const HUD = {
+  throttle() { throttleUntil = performance.now() + 60000; },
   setState(s) {
     if (muted && (s === "listening" || s === "awake")) s = "muted";
     const prev = state;
@@ -284,17 +286,26 @@ function arc(r, a0, a1, w, c, a, glow = 0) {
   ctx.shadowBlur = 0;
 }
 
+// Реактор малюємо з обмеженою частотою кадрів: 30 к/с, коли Джарвіс говорить чи думає, 15 — коли просто слухає,
+// і зовсім не малюємо, коли вікно згорнуте чи сховане. Раніше він малювався 60–144 рази на секунду й вантажив процесор.
+let lastFrame = 0, frameK = 1;
 function frame(t) {
   requestAnimationFrame(frame);
+  if (document.hidden) { lastFrame = t; return; }
+  const busy = state === "speaking" || state === "thinking" || state === "awake" || state === "recognizing";
+  const fps = (SETTINGS.low_power || t < throttleUntil) ? (busy ? 20 : 8) : (busy ? 30 : 15);
+  if (t - lastFrame < 1000 / fps - 2) return;
+  frameK = Math.min(4, (t - lastFrame) / 16.7 || 1);
+  lastFrame = t;
   if (!W) resize();
   const time = t / 1000;
 
   // цільовий колір і швидкість від стану
   const target = state === "thinking" ? PAL.amber : (state === "mic_error" ? PAL.red : state === "awake" ? PAL.white : PAL.cyan);
-  for (let i = 0; i < 3; i++) col[i] += (target[i] - col[i]) * 0.06;
+  for (let i = 0; i < 3; i++) col[i] += (target[i] - col[i]) * Math.min(1, 0.06 * frameK);
   const tSpeed = state === "thinking" ? 4.5 : state === "awake" || state === "recognizing" ? 2.2 : state === "speaking" ? 1.6 : 0.6;
-  speed += (tSpeed - speed) * 0.05;
-  spin += 0.004 * speed;
+  speed += (tSpeed - speed) * Math.min(1, 0.05 * frameK);
+  spin += 0.004 * speed * frameK;
 
   // рівень звуку
   let lvl = 0;
@@ -305,9 +316,9 @@ function frame(t) {
   }
   const listeningNow = state === "awake" || state === "recognizing" || state === "listening";
   if (listeningNow) lvl = micLevel * (state === "listening" ? 0.45 : 1);
-  audioLevel += (lvl - audioLevel) * 0.3;
+  audioLevel += (lvl - audioLevel) * Math.min(1, 0.3 * frameK);
   const tEnergy = state === "speaking" ? 0.4 + audioLevel * 1.6 : state === "awake" ? 0.55 + audioLevel : state === "thinking" ? 0.45 : 0.18 + audioLevel * 0.5;
-  energy += (tEnergy - energy) * 0.08;
+  energy += (tEnergy - energy) * Math.min(1, 0.08 * frameK);
 
   ctx.clearRect(0, 0, W, H);
   const R = Math.min(W, H) * 0.42;
@@ -468,6 +479,7 @@ function drawNet() {
 }
 
 async function poll() {
+  if (document.hidden) { setTimeout(poll, 5000); return; }
   try {
     const s = await api("stats");
     if (s) {
@@ -498,7 +510,7 @@ async function poll() {
         : '<div class="empty">Нагадувань немає</div>';
     }
   } catch (e) { console.error(e); }
-  setTimeout(poll, 1000);
+  setTimeout(poll, document.hidden ? 5000 : 2000);
 }
 
 function tickClock() {
@@ -581,6 +593,7 @@ async function openSettings() {
   $("#s-alerts").checked = !!s.proactive_alerts;
   $("#s-welcome").checked = !!s.welcome_back;
   $("#s-sfx").checked = !!s.sfx;
+  $("#s-lowpower").checked = !!s.low_power;
   $("#s-vfx").checked = !!s.voice_fx;
   $("#s-auto").checked = !!s.autostart;
   $("#s-upd").checked = s.auto_update !== false;
@@ -608,7 +621,7 @@ $("#s-save").onclick = async () => {
     user_title: $("#s-title").value.trim() || "сер", user_name: $("#s-name").value.trim(), city: $("#s-city").value.trim() || "Київ",
     wake_word_enabled: $("#s-wake").checked, listen_mode: $("#s-always").checked ? "always" : "wake", speak_responses: $("#s-speak").checked, web_search: $("#s-web").checked,
     morning_briefing: $("#s-brief").checked, proactive_alerts: $("#s-alerts").checked, welcome_back: $("#s-welcome").checked,
-    sfx: $("#s-sfx").checked, voice_fx: $("#s-vfx").checked,
+    sfx: $("#s-sfx").checked, low_power: $("#s-lowpower").checked, voice_fx: $("#s-vfx").checked,
     autostart: $("#s-auto").checked, auto_update: $("#s-upd").checked,
     ...($("#s-obs").value.trim() ? { obs_password: $("#s-obs").value.trim() } : {}), duck_music: $("#s-duck").checked, start_mini: $("#s-smini").checked, wake_engine: $("#s-engine").value, music_service: $("#s-music").value,
     daily_budget: Math.max(0, parseFloat($("#s-budget").value) || 0),
@@ -823,7 +836,7 @@ const DEMO = {
       daily: [{ date: "2026-10-11", min: 7, max: 13, code: 2 }, { date: "2026-10-12", min: 6, max: 11, code: 61 }, { date: "2026-10-13", min: 5, max: 12, code: 3 },
               { date: "2026-10-14", min: 4, max: 14, code: 0 }, { date: "2026-10-15", min: 6, max: 13, code: 80 }] }); }, 700);
     setTimeout(() => { HUD.addMessage("jarvis", "Протокол «вечірка» активовано, сер. Сусіди, підозрюю, не в захваті."); HUD.setState("listening"); }, 1100);
-    }, 2600); return { version: "7.7.0-demo", settings: { sfx: false, voice_fx: true },
+    }, 2600); return { version: "7.7.1-demo", settings: { sfx: false, voice_fx: true },
       protocols: [{ name: "вечірка" }, { name: "тиша" }, { name: "робота" }, { name: "діагностика" }] }; },
   stats: () => ({ cpu: 20 + Math.random() * 25, cores: Array.from({ length: 16 }, () => Math.random() * 70), ram: 58, ram_used: 18.6, ram_total: 32,
     disk: 71, battery: null, down: Math.random() * 900, up: Math.random() * 200, procs: 287, uptime: 93210,

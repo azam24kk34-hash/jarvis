@@ -84,7 +84,6 @@ class OpenAIBrain:
         return bool(self._key())
 
     def _client(self, provider=None):
-        import httpx
         import openai
         provider = provider or self.provider
         info = PROVIDERS[provider]
@@ -92,7 +91,10 @@ class OpenAIBrain:
         if not key:
             raise RuntimeError("NO_KEY")
         # коротке очікування: краще швидко перемкнутися на запасний варіант, ніж чекати хвилину
-        t = httpx.Timeout(connect=6, read=60 if provider == "ollama" else 20, write=10, pool=6)
+        try:
+            t = openai.Timeout(connect=6, read=60 if provider == "ollama" else 20, write=10, pool=6)
+        except Exception:
+            t = 25
         return openai.OpenAI(api_key=key, base_url=info["base"], max_retries=0, timeout=t)
 
     def _candidates(self):

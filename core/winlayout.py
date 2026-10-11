@@ -175,17 +175,23 @@ def wait_window(exe=None, query=None, timeout=25):
 
 
 def capture():
-    """Знімок: де стоїть головне вікно кожної програми користувача."""
+    """Знімок: де стоїть головне вікно кожної програми користувача (один прохід по вікнах — дешево)."""
     from .apps import snapshot
-    out, seen = [], set()
-    for exe, title in snapshot():
-        if exe in seen:
+    from .tools import _windows
+    wanted = {exe.lower(): (exe, title) for exe, title in snapshot()}
+    if not wanted:
+        return []
+    first = {}
+    for h, _t in _windows():
+        path = _exe_of(h).lower()
+        if path in wanted and path not in first:
+            first[path] = h
+    out = []
+    for key, (exe, title) in wanted.items():
+        h = first.get(key)
+        if not h:
             continue
-        w = find_windows(exe=exe)
-        if not w:
-            continue
-        seen.add(exe)
-        p = placement(w[0][0])
+        p = placement(h)
         if p["min"]:
             continue
         out.append({"exe": exe, "title": title[:80], **p})

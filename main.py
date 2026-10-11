@@ -69,6 +69,8 @@ class Jarvis:
         self.voice.music_playing = lambda: self.browser.music_playing
         self.voice.on_ignored = lambda t: self.js("HUD.heard", t, True)
         self.monitor = Monitor(self.config, on_alert=self._alert, on_welcome=self._welcome)
+        from core.cpuwatch import CpuWatch
+        self.cpuwatch = CpuWatch(on_self_heavy=lambda share: self.js("HUD.throttle"))
         self._started = False
         threading.Thread(target=self._worker, daemon=True, name="brain").start()
         threading.Thread(target=self._mic_meter, daemon=True, name="mic-meter").start()
@@ -77,11 +79,11 @@ class Jarvis:
         """Живий рівень мікрофона для реактора (≈10 разів на секунду, лише коли щось змінюється)."""
         last = -1.0
         while True:
-            time.sleep(0.1)
+            time.sleep(0.12)
             if not self._started:
                 continue
             lvl = round(self.voice.level, 2)
-            if abs(lvl - last) >= 0.03:
+            if abs(lvl - last) >= 0.05:
                 last = lvl
                 self.js("HUD.mic", lvl)
 
@@ -444,6 +446,7 @@ class Api:
             j.ensure_autostart()
             j.voice.start()
             j.monitor.start()
+            j.cpuwatch.start()
             j.voice.prewarm(WAKE_REPLIES + [OFFLINE_LINE])
             threading.Timer(2.0, j.self_test).start()
             threading.Thread(target=j.update_loop, daemon=True, name="updater").start()
@@ -647,6 +650,8 @@ def main():
         selftest()
     from core.winlayout import enable_dpi_awareness
     enable_dpi_awareness()  # точні координати вікон на моніторах з масштабом
+    from core.cpuwatch import lower_priority
+    lower_priority()  # Джарвіс поступається процесором іграм, OBS і браузеру
     log.setup(VERSION)
     # дозволяємо WebView2 відтворювати голос без кліку користувача
     os.environ.setdefault("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--autoplay-policy=no-user-gesture-required")
