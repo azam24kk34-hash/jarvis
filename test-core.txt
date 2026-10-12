@@ -1,0 +1,129 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\hostedtoolcache\windows\Python\3.12.10\x64\python.exe
+cachedir: .pytest_cache
+rootdir: D:\a\jarvis\jarvis
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.15.1
+collecting ... collected 43 items / 7 deselected / 36 selected
+
+tests/test_app.py::test_jarvis_constructs_and_api_works PASSED           [  2%]
+tests/test_app.py::test_js_never_blocks_voice_or_brain PASSED            [  5%]
+tests/test_browser.py::test_edge_snapshot_type_click_read PASSED         [  8%]
+tests/test_core.py::test_quick_commands PASSED                           [ 11%]
+tests/test_core.py::test_protocol_matching PASSED                        [ 13%]
+tests/test_core.py::test_memory_roundtrip PASSED                         [ 16%]
+tests/test_core.py::test_usage_cost PASSED                               [ 19%]
+tests/test_core.py::test_speech_stream_sentences PASSED                  [ 22%]
+tests/test_core.py::test_wakeword_silence PASSED                         [ 25%]
+tests/test_core.py::test_brain_streaming_with_tools PASSED               [ 27%]
+tests/test_core.py::test_calendar_parsing PASSED                         [ 30%]
+tests/test_core.py::test_updater_check PASSED                            [ 33%]
+tests/test_core.py::test_openai_compatible_brain_tools_and_stream PASSED [ 36%]
+tests/test_core.py::test_web_search_parsing PASSED                       [ 38%]
+tests/test_core.py::test_obs_actions_with_fake_websocket PASSED          [ 41%]
+tests/test_core.py::test_custom_phrases PASSED                           [ 44%]
+tests/test_speed.py::test_light_request_has_no_heavy_tools PASSED        [ 47%]
+tests/test_speed.py::test_action_request_gets_tools_and_signature_roundtrip PASSED [ 50%]
+tests/test_speed.py::test_fallback_to_lite_model_when_overloaded PASSED  [ 52%]
+tests/test_speed.py::test_fallback_to_other_provider_without_gemini_fields PASSED [ 55%]
+tests/test_speed.py::test_local_talk_answers_instantly PASSED            [ 58%]
+tests/test_windows.py::test_clipboard_cyrillic PASSED                    [ 61%]
+tests/test_windows.py::test_autostart_registry PASSED                    [ 63%]
+tests/test_windows.py::test_idle_seconds PASSED                          [ 66%]
+tests/test_windows.py::test_online PASSED                                [ 69%]
+tests/test_windows.py::test_window_enum_focus_and_close PASSED           [ 72%]
+tests/test_windows.py::test_apps_snapshot_sees_notepad PASSED            [ 75%]
+tests/test_windows.py::test_close_application_protects_jarvis PASSED     [ 77%]
+tests/test_windows.py::test_flac_converter_works PASSED                  [ 80%]
+tests/test_windows.py::test_pyaudio_loads PASSED                         [ 83%]
+tests/test_windows.py::test_volume_keys_do_not_crash PASSED              [ 86%]
+tests/test_windows.py::test_screenshot_tool PASSED                       [ 88%]
+tests/test_windows.py::test_monitors_listed PASSED                       [ 91%]
+tests/test_windows.py::test_place_window_left_half PASSED                [ 94%]
+tests/test_windows.py::test_layout_save_and_apply PASSED                 [ 97%]
+tests/test_windows.py::test_ui_automation_lists_and_clicks_notepad PASSED [100%]
+
+============================== warnings summary ===============================
+tests/test_windows.py::test_flac_converter_works
+  C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\site-packages\speech_recognition\__init__.py:7: DeprecationWarning: 'aifc' is deprecated and slated for removal in Python 3.13
+    import aifc
+
+tests/test_windows.py::test_flac_converter_works
+  C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\site-packages\speech_recognition\__init__.py:8: DeprecationWarning: 'audioop' is deprecated and slated for removal in Python 3.13
+    import audioop
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=================================== PASSES ====================================
+_____________________ test_edge_snapshot_type_click_read ______________________
+---------------------------- Captured stdout call -----------------------------
+Browser launched: msedge\n\u0412\u0456\u0434\u043a\u0440\u0438\u0442\u043e: \u0422\u0435\u0441\u0442\u043e\u0432\u0430 \u0441\u0442\u043e\u0440\u0456\u043d\u043a\u0430 (file:///C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-0/test_edge_snapshot_type_click_0/page.html)\n\u0421\u0442\u043e\u0440\u0456\u043d\u043a\u0430: \u0422\u0435\u0441\u0442\u043e\u0432\u0430 \u0441\u0442\u043e\u0440\u0456\u043d\u043a\u0430\nURL: file:///C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-0/test_edge_snapshot_type_click_0/page.html\n\u0415\u043b\u0435\u043c\u0435\u043d\u0442\u0438 (\u0432\u0438\u043a\u043e\u0440\u0438\u0441\u0442\u043e\u0432\u0443\u0439 \u043d\u043e\u043c\u0435\u0440 \u0443 browser_click/browser_type):\n[1] link "\u041f\u0440\u043e \u043d\u0430\u0441"\n[2] search "\u041f\u043e\u0448\u0443\u043a"\n[3] button "\u0417\u043d\u0430\u0439\u0442\u0438"
+_________________ test_fallback_to_lite_model_when_overloaded _________________
+---------------------------- Captured stdout call -----------------------------
+\u041c\u043e\u0437\u043e\u043a gemini/gemini-9-flash \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0438\u0439 (InternalServerError) \u2014 \u043f\u0440\u043e\u0431\u0443\u044e gemini/gemini-9-flash-lite
+____________ test_fallback_to_other_provider_without_gemini_fields ____________
+---------------------------- Captured stdout call -----------------------------
+\u041c\u043e\u0437\u043e\u043a gemini/gemini-9-flash \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0438\u0439 (InternalServerError) \u2014 \u043f\u0440\u043e\u0431\u0443\u044e gemini/gemini-9-flash-lite\n\u041c\u043e\u0437\u043e\u043a gemini/gemini-9-flash-lite \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0438\u0439 (InternalServerError) \u2014 \u043f\u0440\u043e\u0431\u0443\u044e groq/groq-model
+______________________ test_window_enum_focus_and_close _______________________
+---------------------------- Captured stdout call -----------------------------
+\u0412\u0456\u043a\u043d\u0430: ['Untitled - Notepad', 'C:\\\\ProgramData\\\\GitHub\\\\HostedComputeAgent\\\\hosted-compute-agent']\n\u041f\u0435\u0440\u0435\u0439\u0448\u043e\u0432 \u0434\u043e: Untitled - Notepad\nminimize: Untitled - Notepad\nrestore: C:\\ProgramData\\GitHub\\HostedComputeAgent\\hosted-compute-agent
+_______________________ test_apps_snapshot_sees_notepad _______________________
+---------------------------- Captured stdout call -----------------------------
+\u041f\u0440\u043e\u0433\u0440\u0430\u043c\u0438: ['notepad.exe']
+___________________ test_close_application_protects_jarvis ____________________
+---------------------------- Captured stdout call -----------------------------
+\u041f\u0440\u043e\u0446\u0435\u0441 'notepad' \u043d\u0435 \u0437\u043d\u0430\u0439\u0434\u0435\u043d\u043e
+_____________________________ test_pyaudio_loads ______________________________
+---------------------------- Captured stdout call -----------------------------
+\u0410\u0443\u0434\u0456\u043e\u043f\u0440\u0438\u0441\u0442\u0440\u043e\u0457\u0432: 0
+____________________________ test_monitors_listed _____________________________
+---------------------------- Captured stdout call -----------------------------
+[{'work': (0, 0, 1024, 720), 'full': (0, 0, 1024, 768), 'primary': True, 'h': 65537, 'i': 1}]
+_________________________ test_place_window_left_half _________________________
+---------------------------- Captured stdout call -----------------------------
+Untitled - Notepad \u2014 \u0435\u043a\u0440\u0430\u043d 1, \u043b\u0456\u0432\u043e\u0440\u0443\u0447\n{'rect': [0, 0, 512, 720], 'max': False, 'min': False, 'monitor': 1} (0, 0, 1024, 720)
+_________________________ test_layout_save_and_apply __________________________
+---------------------------- Captured stdout call -----------------------------
+\u0417\u0430\u043f\u0430\u043c'\u044f\u0442\u0430\u0432 \u0440\u043e\u0431\u043e\u0447\u0435 \u043c\u0456\u0441\u0446\u0435 \xab\u0442\u0435\u0441\u0442\xbb: \u0411\u043b\u043e\u043a\u043d\u043e\u0442 (\u0435\u043a\u0440\u0430\u043d 1)\n\u0420\u043e\u0431\u043e\u0447\u0435 \u043c\u0456\u0441\u0446\u0435 \xab\u0442\u0435\u0441\u0442\xbb: \u0440\u043e\u0437\u0441\u0442\u0430\u0432\u043b\u0435\u043d\u043e \u0411\u043b\u043e\u043a\u043d\u043e\u0442
+_________________ test_ui_automation_lists_and_clicks_notepad _________________
+---------------------------- Captured stdout call -----------------------------
+Untitled - Notepad:\nButton: \xabLine up\xbb\nButton: \xabLine down\xbb\nButton: \xabColumn left\xbb\nButton: \xabColumn right\xbb\nMenuItem: \xabSystem\xbb\nButton: \xabMinimize\xbb\nButton: \xabMaximize\xbb\nButton: \xabClose\xbb\nMenuItem: \xabFile\xbb\nMenuItem: \xabEdit\xbb\nMenuItem: \xabFormat\xbb\nMenuItem: \xabView\xbb\nMenuItem: \xabHelp\xbb\n\u041d\u0430\u0442\u0438\u0441\u043d\u0443\u0442\u043e \xabFile\xbb \u0443 Untitled - Notepad
+------------ generated xml file: D:\a\jarvis\jarvis\test-core.xml -------------
+=========================== short test summary info ===========================
+PASSED tests/test_app.py::test_jarvis_constructs_and_api_works
+PASSED tests/test_app.py::test_js_never_blocks_voice_or_brain
+PASSED tests/test_browser.py::test_edge_snapshot_type_click_read
+PASSED tests/test_core.py::test_quick_commands
+PASSED tests/test_core.py::test_protocol_matching
+PASSED tests/test_core.py::test_memory_roundtrip
+PASSED tests/test_core.py::test_usage_cost
+PASSED tests/test_core.py::test_speech_stream_sentences
+PASSED tests/test_core.py::test_wakeword_silence
+PASSED tests/test_core.py::test_brain_streaming_with_tools
+PASSED tests/test_core.py::test_calendar_parsing
+PASSED tests/test_core.py::test_updater_check
+PASSED tests/test_core.py::test_openai_compatible_brain_tools_and_stream
+PASSED tests/test_core.py::test_web_search_parsing
+PASSED tests/test_core.py::test_obs_actions_with_fake_websocket
+PASSED tests/test_core.py::test_custom_phrases
+PASSED tests/test_speed.py::test_light_request_has_no_heavy_tools
+PASSED tests/test_speed.py::test_action_request_gets_tools_and_signature_roundtrip
+PASSED tests/test_speed.py::test_fallback_to_lite_model_when_overloaded
+PASSED tests/test_speed.py::test_fallback_to_other_provider_without_gemini_fields
+PASSED tests/test_speed.py::test_local_talk_answers_instantly
+PASSED tests/test_windows.py::test_clipboard_cyrillic
+PASSED tests/test_windows.py::test_autostart_registry
+PASSED tests/test_windows.py::test_idle_seconds
+PASSED tests/test_windows.py::test_online
+PASSED tests/test_windows.py::test_window_enum_focus_and_close
+PASSED tests/test_windows.py::test_apps_snapshot_sees_notepad
+PASSED tests/test_windows.py::test_close_application_protects_jarvis
+PASSED tests/test_windows.py::test_flac_converter_works
+PASSED tests/test_windows.py::test_pyaudio_loads
+PASSED tests/test_windows.py::test_volume_keys_do_not_crash
+PASSED tests/test_windows.py::test_screenshot_tool
+PASSED tests/test_windows.py::test_monitors_listed
+PASSED tests/test_windows.py::test_place_window_left_half
+PASSED tests/test_windows.py::test_layout_save_and_apply
+PASSED tests/test_windows.py::test_ui_automation_lists_and_clicks_notepad
+================ 36 passed, 7 deselected, 2 warnings in 31.45s ================

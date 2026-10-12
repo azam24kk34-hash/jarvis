@@ -1,0 +1,406 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\hostedtoolcache\windows\Python\3.12.10\x64\python.exe
+cachedir: .pytest_cache
+rootdir: D:\a\jarvis\jarvis
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.15.1
+collecting ... collected 43 items / 36 deselected / 7 selected
+
+tests/test_windows.py::test_edge_tts_ukrainian FAILED                    [ 14%]
+tests/test_windows.py::test_weather PASSED                               [ 28%]
+tests/test_ytmusic.py::test_youtube_search_finds_video PASSED            [ 42%]
+tests/test_ytmusic.py::test_ytmusic_plays_video PASSED                   [ 57%]
+tests/test_ytmusic.py::test_ytmusic_controls PASSED                      [ 71%]
+tests/test_ytmusic.py::test_ytmusic_search_play PASSED                   [ 85%]
+tests/test_ytmusic.py::test_ytmusic_liked_requires_login PASSED          [100%]
+
+================================== FAILURES ===================================
+___________________________ test_edge_tts_ukrainian ___________________________
+
+self = <edge_tts.communicate.Communicate object at 0x000001CD696C45C0>
+
+    async def stream(
+        self,
+    ) -> AsyncGenerator[TTSChunk, None]:
+        """
+        Streams audio and metadata from the service.
+    
+        Raises:
+            NoAudioReceived: If no audio is received from the service.
+            UnexpectedResponse: If the response from the service is unexpected.
+            UnknownResponse: If the response from the service is unknown.
+            WebSocketError: If there is an error with the websocket.
+        """
+    
+        # Check if stream was called before.
+        if self.state["stream_was_called"]:
+            raise RuntimeError("stream can only be called once.")
+        self.state["stream_was_called"] = True
+    
+        # Stream the audio and metadata from the service.
+        for self.state["partial_text"] in self.texts:
+            self.state["chunk_audio_bytes"] = 0
+            try:
+>               async for message in self.__stream():
+
+C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\site-packages\edge_tts\communicate.py:588: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\site-packages\edge_tts\communicate.py:465: in __stream
+    ) as session, session.ws_connect(
+C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\site-packages\aiohttp\client.py:1756: in __aenter__
+    self._resp: _RetType_co = await self._coro
+                              ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <aiohttp.client.ClientSession object at 0x000001CD6985C830>
+url = 'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23...e1c4b9f&Sec-MS-GEC=5BAC28BBF97A6CFAF9D0B4566352190666B60153894CBDF36FBAE7A84DBABE43&Sec-MS-GEC-Version=1-143.0.3650.75'
+method = 'GET', protocols = (), timeout = <_SENTINEL.sentinel: 1>
+receive_timeout = None, autoclose = True, autoping = True, heartbeat = None
+auth = None, origin = None, params = None
+headers = {'Pragma': 'no-cache', 'Cache-Control': 'no-cache', 'Origin': 'chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold', 'Sec-WebSocket-Version': '13', ...}
+proxy = None, proxy_auth = None
+ssl = <ssl.SSLContext object at 0x000001CD69CCD4D0>, verify_ssl = None
+fingerprint = None, ssl_context = None, server_hostname = None
+proxy_headers = None, compress = 15, max_msg_size = 4194304, decode_text = True
+
+    async def _ws_connect(
+        self,
+        url: StrOrURL,
+        *,
+        method: str = hdrs.METH_GET,
+        protocols: Iterable[str] = (),
+        timeout: ClientWSTimeout | _SENTINEL = sentinel,
+        receive_timeout: float | None = None,
+        autoclose: bool = True,
+        autoping: bool = True,
+        heartbeat: float | None = None,
+        auth: BasicAuth | None = None,
+        origin: str | None = None,
+        params: Query = None,
+        headers: LooseHeaders | None = None,
+        proxy: StrOrURL | None = None,
+        proxy_auth: BasicAuth | None = None,
+        ssl: SSLContext | bool | Fingerprint = True,
+        verify_ssl: bool | None = None,
+        fingerprint: bytes | None = None,
+        ssl_context: SSLContext | None = None,
+        server_hostname: str | None = None,
+        proxy_headers: LooseHeaders | None = None,
+        compress: int = 0,
+        max_msg_size: int = 4 * 1024 * 1024,
+        decode_text: bool = True,
+    ) -> "ClientWebSocketResponse[bool]":
+        if auth is not None:
+            warnings.warn(
+                "The 'auth' parameter is deprecated and will be removed in v4;"
+                " pass headers={'Authorization': "
+                "aiohttp.encode_basic_auth(login, password)} instead",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+        if proxy_auth is not None:
+            warnings.warn(
+                "The 'proxy_auth' parameter is deprecated and will be removed in v4;"
+                " pass proxy_headers={'Proxy-Authorization': "
+                "aiohttp.encode_basic_auth(login, password)} instead",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+        if timeout is not sentinel:
+            if isinstance(timeout, ClientWSTimeout):
+                ws_timeout = timeout
+            else:
+                warnings.warn(
+                    "parameter 'timeout' of type 'float' "
+                    "is deprecated, please use "
+                    "'timeout=ClientWSTimeout(ws_close=...)'",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                ws_timeout = ClientWSTimeout(ws_close=timeout)
+        else:
+            ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
+        if receive_timeout is not None:
+            warnings.warn(
+                "float parameter 'receive_timeout' "
+                "is deprecated, please use parameter "
+                "'timeout=ClientWSTimeout(ws_receive=...)'",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            ws_timeout = attr.evolve(ws_timeout, ws_receive=receive_timeout)
+    
+        if headers is None:
+            real_headers: CIMultiDict[str] = CIMultiDict()
+        else:
+            real_headers = CIMultiDict(headers)
+    
+        default_headers = {
+            hdrs.UPGRADE: "websocket",
+            hdrs.CONNECTION: "Upgrade",
+            hdrs.SEC_WEBSOCKET_VERSION: "13",
+        }
+    
+        for key, value in default_headers.items():
+            real_headers.setdefault(key, value)
+    
+        sec_key = base64.b64encode(os.urandom(16))
+        real_headers[hdrs.SEC_WEBSOCKET_KEY] = sec_key.decode()
+    
+        if protocols:
+            real_headers[hdrs.SEC_WEBSOCKET_PROTOCOL] = ",".join(protocols)
+        if origin is not None:
+            real_headers[hdrs.ORIGIN] = origin
+        if compress:
+            extstr = ws_ext_gen(compress=compress)
+            real_headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
+    
+        # For the sake of backward compatibility, if user passes in None, convert it to True
+        if ssl is None:
+            warnings.warn(
+                "ssl=None is deprecated, please use ssl=True",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            ssl = True
+        ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint)
+    
+        # send request
+        resp = await self.request(
+            method,
+            url,
+            params=params,
+            headers=real_headers,
+            read_until_eof=False,
+            auth=auth,
+            proxy=proxy,
+            proxy_auth=proxy_auth,
+            ssl=ssl,
+            server_hostname=server_hostname,
+            proxy_headers=proxy_headers,
+        )
+    
+        try:
+            # check handshake
+            if resp.status != 101:
+>               raise WSServerHandshakeError(
+                    resp.request_info,
+                    resp.history,
+                    message="Invalid response status",
+                    status=resp.status,
+                    headers=resp.headers,
+                )
+E               aiohttp.client_exceptions.WSServerHandshakeError: 403, message='Invalid response status', url='wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=4420f84bb1964cc1b4e9db109e1c4b9f&Sec-MS-GEC=5BAC28BBF97A6CFAF9D0B4566352190666B60153894CBDF36FBAE7A84DBABE43&Sec-MS-GEC-Version=1-143.0.3650.75'
+
+C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\site-packages\aiohttp\client.py:1329: WSServerHandshakeError
+
+During handling of the above exception, another exception occurred:
+
+config = <core.config.Config object at 0x000001CD6983E690>
+
+    @pytest.mark.network
+    def test_edge_tts_ukrainian(config):
+        from core.voice import Voice
+        v = Voice(config, None, lambda s: None, lambda a: None)
+>       audio = v.tts("\u0414\u043e\u0431\u0440\u0438\u0439 \u0434\u0435\u043d\u044c, \u0441\u0435\u0440. \u0423\u0441\u0456 \u0441\u0438\u0441\u0442\u0435\u043c\u0438 \u0432 \u043d\u043e\u0440\u043c\u0456.")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_windows.py:107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+core\voice.py:78: in tts
+    audio = asyncio.run(self._tts_async(text))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\asyncio\runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\asyncio\runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\asyncio\base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+core\voice.py:63: in _tts_async
+    async for chunk in com.stream():
+C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\site-packages\edge_tts\communicate.py:596: in stream
+    async for message in self.__stream():
+C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\site-packages\edge_tts\communicate.py:465: in __stream
+    ) as session, session.ws_connect(
+C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\site-packages\aiohttp\client.py:1756: in __aenter__
+    self._resp: _RetType_co = await self._coro
+                              ^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <aiohttp.client.ClientSession object at 0x000001CD69CC6990>
+url = 'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23...a73ff30&Sec-MS-GEC=5BAC28BBF97A6CFAF9D0B4566352190666B60153894CBDF36FBAE7A84DBABE43&Sec-MS-GEC-Version=1-143.0.3650.75'
+method = 'GET', protocols = (), timeout = <_SENTINEL.sentinel: 1>
+receive_timeout = None, autoclose = True, autoping = True, heartbeat = None
+auth = None, origin = None, params = None
+headers = {'Pragma': 'no-cache', 'Cache-Control': 'no-cache', 'Origin': 'chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold', 'Sec-WebSocket-Version': '13', ...}
+proxy = None, proxy_auth = None
+ssl = <ssl.SSLContext object at 0x000001CD69CCD4D0>, verify_ssl = None
+fingerprint = None, ssl_context = None, server_hostname = None
+proxy_headers = None, compress = 15, max_msg_size = 4194304, decode_text = True
+
+    async def _ws_connect(
+        self,
+        url: StrOrURL,
+        *,
+        method: str = hdrs.METH_GET,
+        protocols: Iterable[str] = (),
+        timeout: ClientWSTimeout | _SENTINEL = sentinel,
+        receive_timeout: float | None = None,
+        autoclose: bool = True,
+        autoping: bool = True,
+        heartbeat: float | None = None,
+        auth: BasicAuth | None = None,
+        origin: str | None = None,
+        params: Query = None,
+        headers: LooseHeaders | None = None,
+        proxy: StrOrURL | None = None,
+        proxy_auth: BasicAuth | None = None,
+        ssl: SSLContext | bool | Fingerprint = True,
+        verify_ssl: bool | None = None,
+        fingerprint: bytes | None = None,
+        ssl_context: SSLContext | None = None,
+        server_hostname: str | None = None,
+        proxy_headers: LooseHeaders | None = None,
+        compress: int = 0,
+        max_msg_size: int = 4 * 1024 * 1024,
+        decode_text: bool = True,
+    ) -> "ClientWebSocketResponse[bool]":
+        if auth is not None:
+            warnings.warn(
+                "The 'auth' parameter is deprecated and will be removed in v4;"
+                " pass headers={'Authorization': "
+                "aiohttp.encode_basic_auth(login, password)} instead",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+        if proxy_auth is not None:
+            warnings.warn(
+                "The 'proxy_auth' parameter is deprecated and will be removed in v4;"
+                " pass proxy_headers={'Proxy-Authorization': "
+                "aiohttp.encode_basic_auth(login, password)} instead",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+        if timeout is not sentinel:
+            if isinstance(timeout, ClientWSTimeout):
+                ws_timeout = timeout
+            else:
+                warnings.warn(
+                    "parameter 'timeout' of type 'float' "
+                    "is deprecated, please use "
+                    "'timeout=ClientWSTimeout(ws_close=...)'",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                ws_timeout = ClientWSTimeout(ws_close=timeout)
+        else:
+            ws_timeout = DEFAULT_WS_CLIENT_TIMEOUT
+        if receive_timeout is not None:
+            warnings.warn(
+                "float parameter 'receive_timeout' "
+                "is deprecated, please use parameter "
+                "'timeout=ClientWSTimeout(ws_receive=...)'",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            ws_timeout = attr.evolve(ws_timeout, ws_receive=receive_timeout)
+    
+        if headers is None:
+            real_headers: CIMultiDict[str] = CIMultiDict()
+        else:
+            real_headers = CIMultiDict(headers)
+    
+        default_headers = {
+            hdrs.UPGRADE: "websocket",
+            hdrs.CONNECTION: "Upgrade",
+            hdrs.SEC_WEBSOCKET_VERSION: "13",
+        }
+    
+        for key, value in default_headers.items():
+            real_headers.setdefault(key, value)
+    
+        sec_key = base64.b64encode(os.urandom(16))
+        real_headers[hdrs.SEC_WEBSOCKET_KEY] = sec_key.decode()
+    
+        if protocols:
+            real_headers[hdrs.SEC_WEBSOCKET_PROTOCOL] = ",".join(protocols)
+        if origin is not None:
+            real_headers[hdrs.ORIGIN] = origin
+        if compress:
+            extstr = ws_ext_gen(compress=compress)
+            real_headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
+    
+        # For the sake of backward compatibility, if user passes in None, convert it to True
+        if ssl is None:
+            warnings.warn(
+                "ssl=None is deprecated, please use ssl=True",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            ssl = True
+        ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint)
+    
+        # send request
+        resp = await self.request(
+            method,
+            url,
+            params=params,
+            headers=real_headers,
+            read_until_eof=False,
+            auth=auth,
+            proxy=proxy,
+            proxy_auth=proxy_auth,
+            ssl=ssl,
+            server_hostname=server_hostname,
+            proxy_headers=proxy_headers,
+        )
+    
+        try:
+            # check handshake
+            if resp.status != 101:
+>               raise WSServerHandshakeError(
+                    resp.request_info,
+                    resp.history,
+                    message="Invalid response status",
+                    status=resp.status,
+                    headers=resp.headers,
+                )
+E               aiohttp.client_exceptions.WSServerHandshakeError: 403, message='Invalid response status', url='wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=ce94e5f7d6424f3c89a66654aa73ff30&Sec-MS-GEC=5BAC28BBF97A6CFAF9D0B4566352190666B60153894CBDF36FBAE7A84DBABE43&Sec-MS-GEC-Version=1-143.0.3650.75'
+
+C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\site-packages\aiohttp\client.py:1329: WSServerHandshakeError
+=================================== PASSES ====================================
+________________________________ test_weather _________________________________
+---------------------------- Captured stdout call -----------------------------
+\u041a\u0438\u0457\u0432: \u0437\u0430\u0440\u0430\u0437 11\xb0C (\u0432\u0456\u0434\u0447\u0443\u0432\u0430\u0454\u0442\u044c\u0441\u044f 9\xb0), \u043d\u0435\u0432\u0435\u043b\u0438\u043a\u0438\u0439 \u0434\u043e\u0449, \u0432\u0456\u0442\u0435\u0440 2 \u043c/\u0441, \u0432\u043e\u043b\u043e\u0433\u0456\u0441\u0442\u044c 77%\n2026-10-12: 11\u202616\xb0C, \u043d\u0435\u0432\u0435\u043b\u0438\u043a\u0438\u0439 \u0434\u043e\u0449, \u043e\u043f\u0430\u0434\u0438 73%\n2026-10-13: 9\u202611\xb0C, \u043d\u0435\u0432\u0435\u043b\u0438\u043a\u0438\u0439 \u0434\u043e\u0449, \u043e\u043f\u0430\u0434\u0438 48%
+_______________________ test_youtube_search_finds_video _______________________
+---------------------------- Captured stdout call -----------------------------
+pAgnJDJN4VA AC/DC - Back In Black (Official 4K Video)
+__________________________ test_ytmusic_plays_video ___________________________
+---------------------------- Captured stdout call -----------------------------
+Browser launched: msedge
+{'title': 'YouTube Music', 'artist': '', 'album': '', 'playing': True, 'signed_in': False}
+____________________________ test_ytmusic_controls ____________________________
+---------------------------- Captured stdout call -----------------------------
+pause: {'title': 'YouTube Music', 'artist': '', 'album': '', 'playing': False, 'signed_in': False, 'ok': True}
+resume: {'title': 'YouTube Music', 'artist': '', 'album': '', 'playing': True, 'signed_in': False, 'ok': True}
+next: {'title': 'YouTube Music', 'artist': '', 'album': '', 'playing': False, 'signed_in': False, 'ok': True}
+__________________________ test_ytmusic_search_play ___________________________
+---------------------------- Captured stdout call -----------------------------
+{'title': 'YouTube Music', 'artist': '', 'album': '\u042f\u043d\u0430\u043d\u0435\u0431\u0456\u0431\u0443\u0432', 'playing': True, 'signed_in': False}
+______________________ test_ytmusic_liked_requires_login ______________________
+---------------------------- Captured stdout call -----------------------------
+\u0431\u0435\u0437 \u0432\u0445\u043e\u0434\u0443: PermissionError('NOT_SIGNED_IN')
+----------- generated xml file: D:\a\jarvis\jarvis\test-network.xml -----------
+=========================== short test summary info ===========================
+PASSED tests/test_windows.py::test_weather
+PASSED tests/test_ytmusic.py::test_youtube_search_finds_video
+PASSED tests/test_ytmusic.py::test_ytmusic_plays_video
+PASSED tests/test_ytmusic.py::test_ytmusic_controls
+PASSED tests/test_ytmusic.py::test_ytmusic_search_play
+PASSED tests/test_ytmusic.py::test_ytmusic_liked_requires_login
+FAILED tests/test_windows.py::test_edge_tts_ukrainian - aiohttp.client_exceptions.WSServerHandshakeError: 403, message='Invalid response status', url='wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=ce94e5f7d6424f3c89a66654aa73ff30&Sec-MS-GEC=5BAC28BBF97A6CFAF9D0B4566352190666B60153894CBDF36FBAE7A84DBABE43&Sec-MS-GEC-Version=1-143.0.3650.75'
+================= 1 failed, 6 passed, 36 deselected in 37.34s =================
