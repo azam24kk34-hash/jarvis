@@ -45,6 +45,12 @@ class Jarvis:
             self.config.update({"listen_mode": "wake", "listen_v74": True})
         self.window = None
         self._audio_done = threading.Event()
+        self._audio_started = threading.Event()
+        self._jsq = queue.Queue(maxsize=500)
+        self._js_mic = None
+        self._js_busy_since = 0.0
+        self._hidden = False
+        self._audio_native = False
         self._commands = queue.Queue()
         self.reminders = Reminders(self._reminder_fired)
         self.protocols = Protocols()
@@ -71,7 +77,11 @@ class Jarvis:
         self.monitor = Monitor(self.config, on_alert=self._alert, on_welcome=self._welcome)
         from core.cpuwatch import CpuWatch
         self.cpuwatch = CpuWatch(on_self_heavy=lambda share: self.js("HUD.throttle"))
+        from core.watchdog import Watchdog
+        self._busy_since = 0.0
+        self.watchdog = Watchdog(self)
         self._started = False
+        threading.Thread(target=self._js_loop, daemon=True, name="js").start()
         threading.Thread(target=self._worker, daemon=True, name="brain").start()
         threading.Thread(target=self._mic_meter, daemon=True, name="mic-meter").start()
 
@@ -89,7 +99,7 @@ class Jarvis:
 
     def self_test(self):
         """Перевірка систем при старті — як у фільмі, з доповіддю в HUD."""
-        for _ in range(16):  # мікрофон відкривається й калібрується ~1–3 с після старту
+        for _ in range(60):  # мікрофон відкривається 1–20 с після старту (при вході в Windows — довше)
             if self.voice.mic_ok:
                 break
             time.sleep(0.5)
@@ -112,12 +122,36 @@ class Jarvis:
 
     # --------------------------------------------------------- зв'язок з HUD
     def js(self, fn, *args):
+        """Виклик функції інтерфейсу БЕЗ очікування. Раніше голос і мозок чекали, поки вікно виконає скрипт, —
+        і коли вікно було згорнуте чи зайняте, Джарвіс «зависав»: довго думав і переставав чути."""
         if not self.window:
             return
+        code = f"{fn}({', '.join(json.dumps(a, ensure_ascii=False) for a in args)})"
+        if fn == "HUD.mic":  # рівень мікрофона — лише найсвіжіше значення
+            self._js_mic = code
+            code = None
         try:
-            self.window.evaluate_js(f"{fn}({', '.join(json.dumps(a, ensure_ascii=False) for a in args)})")
-        except Exception as e:
-            print("JS error:", e)
+            self._jsq.put_nowait(code)
+        except queue.Full:
+            pass
+
+    def _js_loop(self):
+        while True:
+            code = self._jsq.get()
+            if code is None:
+                code, self._js_mic = self._js_mic, None
+                if not code:
+                    continue
+            w = self.window
+            if not w:
+                continue
+            self._js_busy_since = time.time()
+            try:
+                run = getattr(w, "run_js", None)  # pywebview 5+: без очікування результату
+                (run or w.evaluate_js)(code)
+            except Exception as e:
+                print("JS error:", repr(e)[:200])
+            self._js_busy_since = 0.0
 
     def _voice_state(self, state):
         self.js("HUD.setState", state)
@@ -137,7 +171,7 @@ class Jarvis:
         """Автооновлення: через 1,5 хв після старту, далі кожні 3 години перевіряємо релізи на GitHub.
         Нову версію ставимо самі, коли Джарвіс нічим не зайнятий, а ви не працюєте за ПК
         (або одразу після запуску) — інсталятор тихо замінить програму й запустить її знову."""
-        time.sleep(90)
+        time.sleep(45)
         first = True
         while True:
             try:
@@ -151,6 +185,7 @@ class Jarvis:
         from core import updater
         from core.monitor import idle_seconds
         new, url = updater.check(VERSION)
+        print(f"Перевірка оновлень: {'є ' + new if new else 'нової версії немає'}")
         if not (new and url):
             return
         title = self.config.get("user_title")
@@ -163,11 +198,13 @@ class Jarvis:
             if quiet and (at_startup or idle_seconds() > 120):
                 break
             time.sleep(30)
+        print("Auto-update to", new)
         msg = f"{title.capitalize()}, встановлюю оновлення до версії {new}. Повернуся за хвилину."
         self.js("HUD.alert", msg, "info")
         self.js("HUD.addMessage", "jarvis", msg)
-        self.voice.speak(msg, follow_up=False)
-        print("Auto-update to", new)
+        t = threading.Thread(target=self.voice.speak, args=(msg,), kwargs={"follow_up": False}, daemon=True)
+        t.start()
+        t.join(timeout=12)
         updater.install(url)
         self._quit_for_update()
 
@@ -209,9 +246,21 @@ class Jarvis:
             print("Toggle window error:", repr(e))
 
     def _play_audio(self, mp3: bytes):
+        """Звук — через інтерфейс (з ефектами голосу). Якщо вікно сховане, браузерний рушій «приспав» звук
+        або не відповів за 1,5 с — граємо напряму через Windows, щоб Джарвіс ніколи не мовчав і не чекав."""
+        from core import native_audio
+        if (self._hidden or not self.window or self._audio_native) and native_audio.available():
+            native_audio.play(mp3, should_stop=lambda: self.voice._stop)
+            return
         self._audio_done.clear()
+        self._audio_started.clear()
         self.js("HUD.playAudio", base64.b64encode(mp3).decode())
-        self._audio_done.wait(timeout=len(mp3) / 6000 + 6)
+        if not self._audio_started.wait(timeout=1.5) and native_audio.available():
+            print("Інтерфейс не відтворює звук — перемикаюсь на прямий звук Windows")
+            self._audio_native = True
+            native_audio.play(mp3, should_stop=lambda: self.voice._stop)
+            return
+        self._audio_done.wait(timeout=len(mp3) / 6000 + 4)
 
     def submit(self, text, hidden=False, ambient=False):
         """ambient=True — фраза почута без «Джарвіс» (режим «завжди слухаю»)."""
@@ -284,6 +333,7 @@ class Jarvis:
             ft = threading.Timer(2.5, filler)
             ft.daemon = True
             ft.start()
+            self._busy_since = time.time()
             try:
                 self.brain.ask(f"[без звертання] {text}" if ambient else text, on_text=feed)
             except RuntimeError as e:
@@ -296,6 +346,7 @@ class Jarvis:
                 print("Brain error:", repr(e))
                 speech.feed(" " + self._error_text(e))
             ft.cancel()
+            self._busy_since = 0.0
             self.voice.busy = False
             print(f"Timing: перший текст {first['t'] or 0:.1f} с, уся відповідь {time.time() - t0:.1f} с "
                   f"({self.config.get('provider')}/{getattr(self.brain, 'model', self.config.get('model'))})")
@@ -447,6 +498,7 @@ class Api:
             j.voice.start()
             j.monitor.start()
             j.cpuwatch.start()
+            j.watchdog.start()
             j.voice.prewarm(WAKE_REPLIES + [OFFLINE_LINE])
             threading.Timer(2.0, j.self_test).start()
             threading.Thread(target=j.update_loop, daemon=True, name="updater").start()
@@ -498,6 +550,14 @@ class Api:
 
     def audio_done(self):
         self._j._audio_done.set()
+
+    def audio_started(self):
+        self._j._audio_started.set()
+
+    def audio_blocked(self):
+        """Інтерфейс не може відтворити звук (політика автовідтворення) — далі граємо напряму."""
+        self._j._audio_native = True
+        self._j._audio_started.clear()
 
     def stats(self):
         now = time.time()

@@ -15,7 +15,7 @@ from .config import resource_path
 
 def build_info():
     try:
-        with open(resource_path("assets/build_info.json"), encoding="utf-8") as f:
+        with open(resource_path("assets/build_info.json"), encoding="utf-8-sig") as f:
             return json.load(f)
     except Exception:
         return {}

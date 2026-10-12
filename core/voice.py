@@ -13,7 +13,7 @@ import numpy as np
 
 WAKE_REPLIES = ["Так, сер?", "Слухаю, сер.", "До ваших послуг.", "Для вас, сер, — завжди.", "Я тут, сер.", "Слухаю уважно."]
 
-FOLLOW_UP_SECONDS = 12  # скільки секунд після відповіді можна говорити без «Джарвіс»
+FOLLOW_UP_SECONDS = 20  # скільки секунд після відповіді можна говорити без «Джарвіс»
 # як Google іноді «чує» ім'я — теж вважаємо зверненням
 EXTRA_WAKES = ["джарвіс", "джарвис", "джарвіса", "джарвісе", "джервіс", "джерві", "жарвіс", "чарвіс", "джавіс", "джаріс",
                "гарвіс", "джарвез", "джарвес", "jarvis", "jarvys", "javis", "джарвиз", "джарвізе", "харвіс"]
@@ -49,6 +49,7 @@ class Voice:
         self.muted = False
         self._speak_end = 0.0
         self._awake_until = 0.0
+        self.tick = 0.0
         self._force_command = False
         self._speak_lock = threading.Lock()
         self.mic_ok = False
@@ -158,6 +159,7 @@ class Voice:
         r = sr.Recognizer()
         r.pause_threshold = 0.6
         r.dynamic_energy_threshold = True
+        r.operation_timeout = 8  # запит до Google не може «повиснути» назавжди — інакше Джарвіс перестає чути
         try:
             mic = sr.Microphone(sample_rate=16000)
             with mic as source:
@@ -179,6 +181,7 @@ class Voice:
         with mic as source:
             source.stream = _Tap(source.stream, self._on_audio)
             while True:
+                self.tick = time.time()
                 always = self.always_active()
                 offline = self.config.get("wake_engine") == "offline" and not detector_failed and not always
                 if offline and detector is None:
